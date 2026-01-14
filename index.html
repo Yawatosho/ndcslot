@@ -276,6 +276,16 @@
       gap: 6px;
       align-items:stretch;
     }
+
+    /* めくり中の縦伸び防止：グリッド領域の高さを固定してレイアウトを安定させる */
+.grid-wrap{
+  min-height: 420px; /* ← まずはこの値で。環境により 400〜460 で微調整 */
+}
+
+.grid-stage{
+  min-height: 420px;
+}
+    
     .hcell, .vcell{
       display:flex;
       align-items:center;
