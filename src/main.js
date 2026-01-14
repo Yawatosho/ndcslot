@@ -32,6 +32,7 @@ const NDC_JSON_URL = new URL("../ndc.json", import.meta.url);
 let ndc = null;
 let state = null;
 const view = createView();
+let isSpinning = false;
 
 boot().catch((e) => {
   console.error(e);
@@ -83,7 +84,9 @@ async function boot() {
   view.toast(`NDCデータ読み込み完了（有効: ${ndc.validAll.length} / 1000）`);
 }
 
-function onSpin({ mode }) {
+async function onSpin({ mode }) {
+  if (isSpinning) return;
+
   const ok = canSpin({ state, mode, ticketsPerExtraSpin: TICKETS_PER_EXTRA_SPIN });
   if (!ok) {
     view.toast("回せません（無料回数またはしおり券が不足）");
@@ -97,21 +100,33 @@ function onSpin({ mode }) {
     ? rollNewGuaranteed({ state, ndc })
     : rollRandomValid(ndc);
 
-  view.setSlotDigits(result.x, result.y, result.z);
+  // ここから演出（ボタン無効化）
+  isSpinning = true;
+  rerender(); // forceDisabledが効く
+
+  await view.playSpinAnimation({
+    ndc,
+    finalResult: result,
+    durationMs: 420, // ここを 300〜500 の好みで調整OK
+    tickMs: 55,
+  });
+
+  // 最終結果の分類名を表示
   view.setResultText({ ndc, code: result.code });
 
-  // auto move to page
+  // 状態反映（止まってからコミット）
   state.currentPage = result.x;
 
   const outcome = applyStampAndRewards({ state, ndc, result });
   updateDupeStreak({ state, isNew: outcome.isNew });
 
-  // stats
   state.stats.totalSpins += 1;
   if (outcome.isNew) state.stats.totalNew += 1;
   else state.stats.totalDupe += 1;
 
   saveState({ saveKey: SAVE_KEY }, state);
+
+  isSpinning = false;
 
   rerender({ highlight: { page: result.x, row: result.y, col: result.z } });
 
@@ -121,10 +136,11 @@ function onSpin({ mode }) {
 }
 
 function rerender(opts = {}) {
-  view.updateButtons({
-    canSpinAuto: canSpin({ state, mode: "auto", ticketsPerExtraSpin: TICKETS_PER_EXTRA_SPIN }),
-    canSpinTicket: canSpin({ state, mode: "ticket", ticketsPerExtraSpin: TICKETS_PER_EXTRA_SPIN }),
-  });
+view.updateButtons({
+  canSpinAuto: canSpin({ state, mode: "auto", ticketsPerExtraSpin: TICKETS_PER_EXTRA_SPIN }),
+  canSpinTicket: canSpin({ state, mode: "ticket", ticketsPerExtraSpin: TICKETS_PER_EXTRA_SPIN }),
+  forceDisabled: isSpinning,
+});
   view.render({ state, ndc, highlight: opts.highlight });
 }
 
