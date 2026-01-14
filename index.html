@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>NDC Slot + Stamp Album (MVP)</title>
   <meta name="description" content="NDC 3桁スロット × 10ページスタンプ帳（MVP）" />
+  <link rel="icon" href="data:,"><!-- favicon 404 を抑止 -->
+
   <style>
     :root{
       --bg:#0b1220;
       --panel:#0f1b33;
-      --panel2:#0c1730;
       --text:#e8edf7;
       --muted:#b9c3d9;
       --line:rgba(255,255,255,.12);
@@ -18,9 +19,7 @@
       --warn:#ffd27a;
       --bad:#ff7a7a;
 
-      --r:16px;
       --r2:22px;
-
       --shadow: 0 10px 30px rgba(0,0,0,.35);
     }
 
@@ -81,9 +80,7 @@
       box-shadow: var(--shadow);
       overflow:hidden;
     }
-    .panel-inner{
-      padding: 16px;
-    }
+    .panel-inner{ padding: 16px; }
 
     .row{
       display:flex;
@@ -101,10 +98,7 @@
       gap:3px;
       min-width: 120px;
     }
-    .stat .k{
-      font-size: 11px;
-      color: var(--muted);
-    }
+    .stat .k{ font-size: 11px; color: var(--muted); }
     .stat .v{
       font-size: 16px;
       font-weight: 650;
@@ -162,8 +156,21 @@
       border: 1px solid rgba(122,162,255,.35);
       padding: 6px 10px;
       border-radius: 999px;
+      font-weight: 800;
+      letter-spacing:.06em;
+      white-space: nowrap;
+    }
+    .subject-badge{
+      color: var(--text);
+      background: rgba(255,255,255,.06);
+      border: 1px solid var(--line);
+      padding: 6px 10px;
+      border-radius: 999px;
       font-weight: 700;
-      letter-spacing:.04em;
+      max-width: 220px;
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
     }
 
     .btns{
@@ -180,16 +187,13 @@
       border-radius: 16px;
       padding: 12px 14px;
       font-size: 14px;
-      font-weight: 700;
+      font-weight: 800;
       cursor:pointer;
       transition: transform .06s ease, background .15s ease, border-color .15s ease;
     }
     button:hover{ background: rgba(255,255,255,.09); }
     button:active{ transform: translateY(1px); }
-    button:disabled{
-      opacity:.55;
-      cursor:not-allowed;
-    }
+    button:disabled{ opacity:.55; cursor:not-allowed; }
     .primary{
       background: rgba(122,162,255,.16);
       border-color: rgba(122,162,255,.35);
@@ -222,7 +226,7 @@
     }
     .album-title .h{
       font-size: 14.5px;
-      font-weight: 800;
+      font-weight: 900;
       letter-spacing:.02em;
     }
     .album-title .s{
@@ -235,15 +239,12 @@
       flex-direction:column;
       gap:4px;
       text-align:right;
-      min-width: 160px;
+      min-width: 180px;
     }
-    .progress .p{
-      font-size: 12px;
-      color: var(--muted);
-    }
+    .progress .p{ font-size: 12px; color: var(--muted); }
     .progress .n{
       font-size: 14px;
-      font-weight: 800;
+      font-weight: 900;
       letter-spacing:.02em;
     }
 
@@ -259,7 +260,7 @@
       border: 1px solid var(--line);
       background: rgba(255,255,255,.05);
       font-size: 12px;
-      font-weight: 800;
+      font-weight: 900;
       cursor:pointer;
       user-select:none;
     }
@@ -268,9 +269,7 @@
       border-color: rgba(122,162,255,.35);
     }
 
-    .grid-wrap{
-      padding: 14px 16px 18px;
-    }
+    .grid-wrap{ padding: 14px 16px 18px; }
     .grid{
       display:grid;
       grid-template-columns: 28px repeat(10, 1fr);
@@ -285,6 +284,7 @@
       font-size: 11px;
       user-select:none;
     }
+
     .cell{
       border-radius: 10px;
       border: 1px solid var(--line);
@@ -309,14 +309,28 @@
       outline-offset: 1px;
       box-shadow: 0 0 0 6px rgba(122,162,255,.12);
     }
-    .cell .mini{
-      font-size: 12px;
-      transform: translateY(0.5px);
+
+    /* 対象外（分類なし）のマス：最初から埋まっているが、対象外だと分かる見た目 */
+    .cell[data-invalid="true"]{
+      opacity: .40;
+      filter: grayscale(1);
+      background: rgba(255,255,255,.03);
+      border-color: rgba(255,255,255,.10);
     }
-    .cell .stamp{
-      font-size: 14px;
-      line-height: 1;
+    .cell[data-invalid="true"]::after{
+      content: "対象外";
+      position:absolute;
+      inset:0;
+      display:grid;
+      place-items:center;
+      font-size: 11px;
+      color: rgba(232,237,247,.7);
+      letter-spacing:.02em;
+      pointer-events:none;
     }
+
+    .cell .mini{ font-size: 12px; transform: translateY(0.5px); }
+    .cell .stamp{ font-size: 14px; line-height: 1; }
 
     .toast{
       position: fixed;
@@ -329,7 +343,7 @@
       background: rgba(15,27,51,.92);
       box-shadow: var(--shadow);
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 800;
       opacity: 0;
       pointer-events:none;
       transition: opacity .18s ease, transform .18s ease;
@@ -358,7 +372,7 @@
       <div class="title">
         <h1>NDC 3桁スロット × スタンプ帳（MVP）</h1>
         <div class="subtitle">
-          GitHub Pages向け雛形。回す → スタンプ → 保存、まで動く最小版です。
+          ndc.json参照／対象外（分類なし）はスタンプ帳で表示しつつ、スロットには出ません。
         </div>
       </div>
       <a class="smalllink" href="#" id="openSpecLink">仕様メモ</a>
@@ -393,18 +407,23 @@
             <div>最新の出目</div>
             <div class="code-badge" id="lastCode">---</div>
           </div>
+          <div class="result-line">
+            <div>分類</div>
+            <div class="subject-badge" id="lastSubject">（読み込み中）</div>
+          </div>
         </div>
 
         <div class="btns">
-          <button class="primary" id="spinBtn">回す</button>
-          <button id="useTicketSpinBtn">しおり券10枚で回す</button>
+          <button class="primary" id="spinBtn" disabled>回す</button>
+          <button id="useTicketSpinBtn" disabled>しおり券10枚で回す</button>
           <button class="danger" id="resetBtn">データ初期化（開発用）</button>
         </div>
 
         <div class="hint">
           ・無料スピンが残っている間は「回す」で消費します。<br>
           ・無料が0のときは「しおり券10枚で回す」が有効になります。<br>
-          ・新規+2 / ダブり+1 / ページコンプ+50（後でモジュール分割予定）
+          ・新規+2 / ダブり+1 / ページコンプ+50<br>
+          ・対象外（分類なし）の3桁はスロットに出ません（スタンプ帳では灰色表示）。
         </div>
       </div>
     </section>
@@ -417,7 +436,7 @@
           <div class="s">行＝10の位（Y） / 列＝1の位（Z） / マス＝XYZ</div>
         </div>
         <div class="progress">
-          <div class="p">進捗</div>
+          <div class="p">進捗（対象外は最初から埋まり扱い）</div>
           <div class="n">
             <span id="pageProgress">-</span> / 100
             ・全体 <span id="totalProgress">-</span> / 1000
@@ -438,3 +457,4 @@
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>
+
