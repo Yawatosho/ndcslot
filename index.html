@@ -363,6 +363,34 @@
       border-bottom: 1px dotted rgba(255,255,255,.25);
     }
     .smalllink:hover{ color: var(--text); }
+/* Page flip stage */
+.grid-stage{
+  position: relative;
+  perspective: 1200px;
+}
+
+.grid-stage > .grid{
+  position: relative;
+  z-index: 1;
+  transform-style: preserve-3d;
+  will-change: transform, opacity, filter;
+}
+
+.grid-overlay{
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  will-change: transform, opacity, filter;
+}
+
+/* 動きを減らす設定の人には演出を抑制 */
+@media (prefers-reduced-motion: reduce){
+  .grid-stage{ perspective: none; }
+}
+  
   </style>
 </head>
 
@@ -446,11 +474,12 @@
 
       <div class="tabs" id="tabs" aria-label="pages"></div>
 
-      <div class="grid-wrap">
-        <div class="grid" id="grid" aria-label="10x10 grid"></div>
-      </div>
-    </section>
+<div class="grid-wrap">
+  <div class="grid-stage" id="gridStage">
+    <div class="grid" id="grid" aria-label="10x10 grid"></div>
   </div>
+</div>
+
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
