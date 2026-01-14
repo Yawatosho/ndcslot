@@ -12,7 +12,7 @@ const SAVE_KEY = "ndc_slot_save_v1";
 const FREE_SPINS_PER_DAY = 10;
 const TICKETS_PER_EXTRA_SPIN = 10;
 
-const NDC_JSON_PATH = "./ndc.json";
+const NDC_JSON_URL = new URL("../ndc.json", import.meta.url); // src/ の1つ上にある ndc.json
 
 // 後半加速ピティ（index = dupeStreak）
 const PITY_TABLE = [0.00, 0.10, 0.20, 0.35, 0.55, 0.75, 0.90, 1.00];
@@ -118,11 +118,12 @@ async function boot() {
 
 // ===== NDC Load =====
 async function loadNdcIndex() {
-  const res = await fetch(NDC_JSON_PATH, { cache: "no-store" });
+  const res = await fetch(NDC_JSON_URL, { cache: "no-store" });
   if (!res.ok) throw new Error(`Failed to load ndc.json: ${res.status}`);
-  /** @type {{ndc:string, subject:string}[]} */
+
   const list = await res.json();
 
+  // "002" など先頭ゼロが重要なので、必ず3桁に正規化
   ndcIndex = new Map(
     list.map((x) => [String(x.ndc).padStart(3, "0"), String(x.subject ?? "")])
   );
