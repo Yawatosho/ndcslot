@@ -361,8 +361,9 @@ function setSlotDigits(x, y, z) {
 
 function createInitialState() {
   const stamps = Array.from({ length: 10 }, () =>
-    Array.from({ length: 10 }, () Array.from({ length: 10 }, () false))
-  );
+const stamps = Array.from({ length: 10 }, () =>
+  Array.from({ length: 10 }, () => Array.from({ length: 10 }, () => false))
+);
 
   return {
     lastPlayDateKey: getTodayKey(),
