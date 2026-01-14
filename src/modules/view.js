@@ -1,5 +1,5 @@
 // src/modules/view.js
-// 画面描画（タブ／グリッド／進捗／スロット表示／トースト）を main.js から分離
+// 画面描画（タブ／グリッド／進捗／スロット表示／トースト）＋ スロット簡易演出
 
 export function createView() {
   const el = {
@@ -44,7 +44,12 @@ export function createView() {
     el.useTicketSpinBtn.disabled = !enabled;
   }
 
-  function updateButtons({ canSpinAuto, canSpinTicket }) {
+  function updateButtons({ canSpinAuto, canSpinTicket, forceDisabled = false }) {
+    if (forceDisabled) {
+      el.spinBtn.disabled = true;
+      el.useTicketSpinBtn.disabled = true;
+      return;
+    }
     el.spinBtn.disabled = !canSpinAuto;
     el.useTicketSpinBtn.disabled = !canSpinTicket;
   }
@@ -64,6 +69,29 @@ export function createView() {
   function setResultText({ ndc, code }) {
     const subj = ndc?.getSubject(code);
     if (el.lastSubject) el.lastSubject.textContent = subj ? subj : "（分類なし）";
+  }
+
+  /**
+   * スロット簡易演出：有効コードのみを高速で表示 → 最後に finalResult へ
+   * @param {object} params
+   * @param {any} params.ndc
+   * @param {{x:number,y:number,z:number,code:string}} params.finalResult
+   * @param {number} [params.durationMs=420]  300〜500msくらい推奨
+   * @param {number} [params.tickMs=55]       1コマあたりの切り替え間隔
+   */
+  async function playSpinAnimation({ ndc, finalResult, durationMs = 420, tickMs = 55 }) {
+    // 回転中の表示（分類名は固定で“回転中”にしてチラつきを抑える）
+    setSubjectText("回転中…");
+
+    const start = performance.now();
+    while (performance.now() - start < durationMs) {
+      const t = ndc.validAll[randInt(0, ndc.validAll.length - 1)];
+      setSlotDigits(t.x, t.y, t.z);
+      await sleep(tickMs);
+    }
+
+    // 最終結果で止める
+    setSlotDigits(finalResult.x, finalResult.y, finalResult.z);
   }
 
   function initTabs({ onSelectPage }) {
@@ -87,15 +115,12 @@ export function createView() {
   }
 
   function render({ state, ndc, highlight }) {
-    // left stats
     el.freeSpinsLeft.textContent = String(state.freeSpinsLeft);
     el.bookmarkTickets.textContent = String(state.bookmarkTickets);
     el.dupeStreak.textContent = String(state.dupeStreak);
 
-    // album header
     el.albumHeading.textContent = `ページ ${state.currentPage}xx`;
 
-    // progress（対象外は埋まり扱い）
     el.pageProgress.textContent = String(countPageDisplayFilled({ state, ndc, page: state.currentPage }));
     el.totalProgress.textContent = String(countTotalDisplayFilled({ state, ndc }));
 
@@ -115,7 +140,7 @@ export function createView() {
 
       for (let col = 0; col < 10; col++) {
         const valid = ndc.isValidCell(page, row, col);
-        const filled = valid ? (state.stamps[page][row][col] === true) : true; // 対象外は埋まり扱い
+        const filled = valid ? (state.stamps[page][row][col] === true) : true;
 
         const cell = document.createElement("div");
         cell.className = "cell";
@@ -172,6 +197,14 @@ export function createView() {
     return div;
   }
 
+  function sleep(ms) {
+    return new Promise((r) => setTimeout(r, ms));
+  }
+
+  function randInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
   return {
     el,
     toast,
@@ -180,7 +213,9 @@ export function createView() {
     setSubjectText,
     setSlotDigits,
     setResultText,
+    playSpinAnimation,
     initTabs,
     render,
   };
 }
+
