@@ -415,17 +415,17 @@
   .grid-stage{ perspective: none; }
 }
 
-  @keyframes stamp-pop {
+@keyframes stamp-pop {
   0%   { transform: scale(0.6); opacity: 0.2; }
   60%  { transform: scale(1.15); opacity: 1; }
   100% { transform: scale(1.0); opacity: 1; }
 }
 
-/* 新規取得のときだけ、押印が「ポン」 */
-.cell[data-pop="true"] .stamp{
+.stamp.pop{
   display: inline-block;
   animation: stamp-pop 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+
 
   </style>
 </head>
