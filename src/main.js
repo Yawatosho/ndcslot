@@ -6,9 +6,9 @@
    - gameCore.js（中核ロジック）✅
 */
 
-import { initNdc } from "./modules/ndc.js?v=20260115a";
-import { loadState, saveState, applyDailyResetIfNeeded, createInitialState } from "./modules/state.js?v=20260115a";
-import { createView } from "./modules/view.js?v=20260115a";
+import { initNdc } from "./modules/ndc.js?v=20260116a";
+import { loadState, saveState, createInitialState } from "./modules/state.js?v=20260116a";
+import { createView } from "./modules/view.js?v=20260116a";
 import {
   canSpin,
   consumeSpin,
@@ -17,11 +17,24 @@ import {
   rollNewGuaranteed,
   applyStampAndRewards,
   updateDupeStreak,
-} from "./modules/gameCore.js";
+} from "./modules/gameCore.js?v=20260116a";
 
 const SAVE_KEY = "ndc_slot_save_v1";
-const FREE_SPINS_PER_DAY = 10;
-const TICKETS_PER_EXTRA_SPIN = 10;
+const START_TICKETS = 300;
+const TICKETS_PER_SPIN = 1;
+
+// 報酬（しおり券）
+const REWARD_NEW = 8;
+const REWARD_DUPE = 1;
+const REWARD_PAGE_COMPLETE = 50;
+
+// ボーナス
+const BONUS_TRIPLE = 1000; // ゾロ目
+const BONUS_STRAIGHT = 300; // 連番
+// 追加の“ほどよい”おまけ（不要なら 0 にしてOK）
+const BONUS_SANDWICH = 120; // 121 / 707 など
+const BONUS_PAIR = 60;      // 112 / 455 など
+const BONUS_LUCKY7 = 70;    // 7が入っていたら
 
 // 後半加速ピティ（index = dupeStreak）
 const PITY_TABLE = [0.00, 0.10, 0.20, 0.35, 0.55, 0.75, 0.90, 1.00];
@@ -47,8 +60,7 @@ async function boot() {
 
   ndc = await initNdc({ jsonUrl: NDC_JSON_URL });
 
-  state = loadState({ saveKey: SAVE_KEY, freeSpinsPerDay: FREE_SPINS_PER_DAY });
-  applyDailyResetIfNeeded({ state, freeSpinsPerDay: FREE_SPINS_PER_DAY });
+  state = loadState({ saveKey: SAVE_KEY, startTickets: START_TICKETS });
   saveState({ saveKey: SAVE_KEY }, state);
 
   // tabs
@@ -65,11 +77,10 @@ async function boot() {
   view.setResultText({ ndc, code: "000" });
 
   // events
-  view.el.spinBtn.addEventListener("click", () => onSpin({ mode: "auto" }));
-  view.el.useTicketSpinBtn.addEventListener("click", () => onSpin({ mode: "ticket" }));
+  view.el.spinBtn.addEventListener("click", () => onSpin());
   view.el.resetBtn.addEventListener("click", () => {
     if (!confirm("保存データを初期化します。よろしいですか？")) return;
-    state = createInitialState({ freeSpinsPerDay: FREE_SPINS_PER_DAY });
+    state = createInitialState({ startTickets: START_TICKETS });
     saveState({ saveKey: SAVE_KEY }, state);
     rerender();
     view.toast("初期化しました");
@@ -84,16 +95,16 @@ async function boot() {
   view.toast(`NDCデータ読み込み完了（有効: ${ndc.validAll.length} / 1000）`);
 }
 
-async function onSpin({ mode }) {
+async function onSpin() {
   if (isSpinning) return;
 
-  const ok = canSpin({ state, mode, ticketsPerExtraSpin: TICKETS_PER_EXTRA_SPIN });
+  const ok = canSpin({ state, ticketsPerSpin: TICKETS_PER_SPIN });
   if (!ok) {
-    view.toast("回せません（無料回数またはしおり券が不足）");
+    view.toast("回せません（しおり券が不足）");
     return;
   }
 
-  consumeSpin({ state, mode, ticketsPerExtraSpin: TICKETS_PER_EXTRA_SPIN });
+  consumeSpin({ state, ticketsPerSpin: TICKETS_PER_SPIN });
 
   const pity = shouldTriggerPity({ state, ndc, pityTable: PITY_TABLE });
   const result = pity
@@ -116,8 +127,23 @@ async function onSpin({ mode }) {
 
   // 状態反映（止まってからコミット）
   state.currentPage = result.x;
+  state.lastResultCode = result.code;
 
-  const outcome = applyStampAndRewards({ state, ndc, result });
+  const outcome = applyStampAndRewards({
+    state,
+    ndc,
+    result,
+    rewards: {
+      new: REWARD_NEW,
+      dupe: REWARD_DUPE,
+      pageComplete: REWARD_PAGE_COMPLETE,
+      triple: BONUS_TRIPLE,
+      straight: BONUS_STRAIGHT,
+      sandwich: BONUS_SANDWICH,
+      pair: BONUS_PAIR,
+      lucky7: BONUS_LUCKY7,
+    },
+  });
   updateDupeStreak({ state, isNew: outcome.isNew });
 
   state.stats.totalSpins += 1;
@@ -128,20 +154,21 @@ async function onSpin({ mode }) {
 
   isSpinning = false;
 
-rerender({ highlight: { page: result.x, row: result.y, col: result.z, pop: outcome.isNew } });
-
+  rerender({ highlight: { page: result.x, row: result.y, col: result.z, pop: outcome.isNew } });
 
   const subj = ndc.getSubject(result.code) ?? "";
   view.toast(`${pity ? "救済" : "結果"}: ${result.code}${subj ? ` / ${subj}` : ""}`);
-  if (outcome.pageCompletedNow) view.toast(`ページ ${result.x}xx コンプリート！ しおり券+50`);
+
+  // 獲得内訳（トーストはキューで順番に出る）
+  for (const b of outcome.breakdown) {
+    view.toast(b.label);
+  }
 }
 
 function rerender(opts = {}) {
-view.updateButtons({
-  canSpinAuto: canSpin({ state, mode: "auto", ticketsPerExtraSpin: TICKETS_PER_EXTRA_SPIN }),
-  canSpinTicket: canSpin({ state, mode: "ticket", ticketsPerExtraSpin: TICKETS_PER_EXTRA_SPIN }),
-  forceDisabled: isSpinning,
-});
+  view.updateButtons({
+    canSpin: canSpin({ state, ticketsPerSpin: TICKETS_PER_SPIN }),
+    forceDisabled: isSpinning,
+  });
   view.render({ state, ndc, highlight: opts.highlight });
 }
-
