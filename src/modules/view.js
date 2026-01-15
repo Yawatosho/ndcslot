@@ -2,6 +2,10 @@
 // 画面描画（タブ／グリッド／進捗／スロット表示／トースト）＋ スロット簡易演出 ＋ ふわっとページ切替
 
 export function createView() {
+  const el = {// src/modules/view.js
+// 画面描画（タブ／グリッド／進捗／スロット表示／トースト）＋ スロット簡易演出 ＋ ふわっとページ切替 ＋ 新規スタンプPop
+
+export function createView() {
   const el = {
     freeSpinsLeft: document.getElementById("freeSpinsLeft"),
     bookmarkTickets: document.getElementById("bookmarkTickets"),
@@ -27,13 +31,15 @@ export function createView() {
     openSpecLink: document.getElementById("openSpecLink"),
   };
 
+  const PAGE_TRANSITION_MS = 220;
+
   let toastTimer = null;
-
-  // ページ切替のための記憶
   let lastRenderedPage = null;
-
-  // grid の切替アニメが重なったときに止める用
   let pageAnim = null;
+
+  function prefersReducedMotion() {
+    return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
 
   function toast(message) {
     if (!message) return;
@@ -77,9 +83,6 @@ export function createView() {
     if (el.lastSubject) el.lastSubject.textContent = subj ? subj : "（分類なし）";
   }
 
-  /**
-   * スロット簡易演出：有効コードのみを高速で表示 → 最後に finalResult へ
-   */
   async function playSpinAnimation({ ndc, finalResult, durationMs = 420, tickMs = 55 }) {
     setSubjectText("回転中…");
 
@@ -113,25 +116,20 @@ export function createView() {
   }
 
   function render({ state, ndc, highlight }) {
-    // stats
     el.freeSpinsLeft.textContent = String(state.freeSpinsLeft);
     el.bookmarkTickets.textContent = String(state.bookmarkTickets);
     el.dupeStreak.textContent = String(state.dupeStreak);
 
-    // album header
     el.albumHeading.textContent = `ページ ${state.currentPage}xx`;
 
-    // progress
     el.pageProgress.textContent = String(countPageDisplayFilled({ state, ndc, page: state.currentPage }));
     el.totalProgress.textContent = String(countTotalDisplayFilled({ state, ndc }));
 
     updateTabsActive(state.currentPage);
 
-    // ページが変わったか
     const pageChanged = (lastRenderedPage !== null && lastRenderedPage !== state.currentPage);
 
-    // 方向（“自然さ”のための左右スライド）
-    let dir = 1; // +1: 右→左に入る（前へ進む感）
+    let dir = 1;
     if (pageChanged) {
       const from = lastRenderedPage;
       const to = state.currentPage;
@@ -141,14 +139,10 @@ export function createView() {
       dir = forward ? 1 : -1;
     }
 
-    // 新ページ描画
-const PAGE_TRANSITION_MS = 220; // animateGridInと同じ
-const popDelayMs = (pageChanged && !prefersReducedMotion()) ? PAGE_TRANSITION_MS : 0;
+    const popDelayMs = (pageChanged && !prefersReducedMotion()) ? PAGE_TRANSITION_MS : 0;
 
-renderGrid({ state, ndc, highlight, popDelayMs });
+    renderGrid({ state, ndc, highlight, popDelayMs });
 
-
-    // ふわっと切替（レイアウトを一切変えない）
     if (pageChanged && !prefersReducedMotion()) {
       animateGridIn(dir);
       animateHeadingIn();
@@ -160,22 +154,15 @@ renderGrid({ state, ndc, highlight, popDelayMs });
   function animateGridIn(dir) {
     try {
       if (pageAnim) pageAnim.cancel();
-
-      const dx = 14 * dir; // ほどよい移動
+      const dx = 14 * dir;
       pageAnim = el.grid.animate(
         [
           { opacity: 0.0, transform: `translateX(${dx}px) scale(0.995)` },
           { opacity: 1.0, transform: "translateX(0px) scale(1)" },
         ],
-        {
-          duration: 220,
-          easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
-          fill: "both",
-        }
+        { duration: PAGE_TRANSITION_MS, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)", fill: "both" }
       );
-    } catch {
-      // animate未対応環境では何もしない
-    }
+    } catch {}
   }
 
   function animateHeadingIn() {
@@ -190,11 +177,7 @@ renderGrid({ state, ndc, highlight, popDelayMs });
     } catch {}
   }
 
-  function prefersReducedMotion() {
-    return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  }
-
-function renderGrid({ state, ndc, highlight, popDelayMs = 0 }) {
+  function renderGrid({ state, ndc, highlight, popDelayMs = 0 }) {
     const page = state.currentPage;
     el.grid.innerHTML = "";
 
@@ -213,18 +196,12 @@ function renderGrid({ state, ndc, highlight, popDelayMs = 0 }) {
         cell.dataset.filled = String(filled);
         if (!valid) cell.dataset.invalid = "true";
 
-const isHL = Boolean(highlight)
-  && highlight.page === page
-  && highlight.row === row
-  && highlight.col === col;
+        const isHL = Boolean(highlight)
+          && highlight.page === page
+          && highlight.row === row
+          && highlight.col === col;
 
-if (isHL) cell.dataset.highlight = "true";
-
-
-
-        function prefersReducedMotion() {
-  return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
+        if (isHL) cell.dataset.highlight = "true";
 
         const code = `${page}${row}${col}`;
         const subj = valid ? (ndc.getSubject(code) ?? "") : "";
@@ -233,16 +210,9 @@ if (isHL) cell.dataset.highlight = "true";
           cell.innerHTML = `<span class="mini">—</span>`;
           cell.title = `${code}（対象外）`;
         } else if (filled) {
-const doPop = Boolean(highlight)
-  && highlight.page === page
-  && highlight.row === row
-  && highlight.col === col
-  && highlight.pop
-  && !prefersReducedMotion();
-
-const delayAttr = doPop && popDelayMs > 0 ? ` style="animation-delay:${popDelayMs}ms"` : "";
-cell.innerHTML = `<span class="stamp${doPop ? " pop" : ""}"${delayAttr}>●</span>`;
-
+          const doPop = isHL && Boolean(highlight?.pop) && !prefersReducedMotion();
+          const delayAttr = (doPop && popDelayMs > 0) ? ` style="animation-delay:${popDelayMs}ms"` : "";
+          cell.innerHTML = `<span class="stamp${doPop ? " pop" : ""}"${delayAttr}>●</span>`;
           cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
         } else {
           cell.innerHTML = `<span class="mini">${row}${col}</span>`;
@@ -257,7 +227,6 @@ cell.innerHTML = `<span class="stamp${doPop ? " pop" : ""}"${delayAttr}>●</spa
   function countPageDisplayFilled({ state, ndc, page }) {
     const validCount = ndc.validByPage[page].length;
     const invalidCount = 100 - validCount;
-
     let filledValid = 0;
     for (const t of ndc.validByPage[page]) if (state.stamps[t.x][t.y][t.z]) filledValid++;
     return invalidCount + filledValid;
@@ -266,7 +235,6 @@ cell.innerHTML = `<span class="stamp${doPop ? " pop" : ""}"${delayAttr}>●</spa
   function countTotalDisplayFilled({ state, ndc }) {
     const validCountTotal = ndc.validAll.length;
     const invalidCountTotal = 1000 - validCountTotal;
-
     let filledValid = 0;
     for (const t of ndc.validAll) if (state.stamps[t.x][t.y][t.z]) filledValid++;
     return invalidCountTotal + filledValid;
