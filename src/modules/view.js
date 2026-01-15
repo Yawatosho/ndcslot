@@ -1,5 +1,5 @@
 // src/modules/view.js
-// 画面描画（タブ／グリッド／進捗／スロット表示／トースト）＋ スロット簡易演出 ＋ ページめくり
+// 画面描画（タブ／グリッド／進捗／スロット表示／トースト）＋ スロット簡易演出 ＋ ふわっとページ切替
 
 export function createView() {
   const el = {
@@ -25,16 +25,15 @@ export function createView() {
 
     toast: document.getElementById("toast"),
     openSpecLink: document.getElementById("openSpecLink"),
-
-    gridStage: document.getElementById("gridStage"), // index.htmlで追加したラッパー
   };
 
   let toastTimer = null;
 
-  // ページめくり用
+  // ページ切替のための記憶
   let lastRenderedPage = null;
-  let activeOverlay = null;
-  let activeAnims = [];
+
+  // grid の切替アニメが重なったときに止める用
+  let pageAnim = null;
 
   function toast(message) {
     if (!message) return;
@@ -90,7 +89,6 @@ export function createView() {
       setSlotDigits(t.x, t.y, t.z);
       await sleep(tickMs);
     }
-
     setSlotDigits(finalResult.x, finalResult.y, finalResult.z);
   }
 
@@ -123,39 +121,73 @@ export function createView() {
     // album header
     el.albumHeading.textContent = `ページ ${state.currentPage}xx`;
 
-    // progress（対象外は埋まり扱い）
+    // progress
     el.pageProgress.textContent = String(countPageDisplayFilled({ state, ndc, page: state.currentPage }));
     el.totalProgress.textContent = String(countTotalDisplayFilled({ state, ndc }));
 
     updateTabsActive(state.currentPage);
 
-    // ---- ページめくり判定 ----
+    // ページが変わったか
     const pageChanged = (lastRenderedPage !== null && lastRenderedPage !== state.currentPage);
-    const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    // もしアニメ途中で次の描画が来たら、前の残骸を片付ける
-    cleanupOverlay();
-
-    // 旧ページをオーバーレイとして確保（“描き換える前”にクローン）
-    let overlay = null;
-    if (pageChanged && !reduceMotion) {
-      overlay = cloneCurrentGridAsOverlay();
+    // 方向（“自然さ”のための左右スライド）
+    let dir = 1; // +1: 右→左に入る（前へ進む感）
+    if (pageChanged) {
+      const from = lastRenderedPage;
+      const to = state.currentPage;
+      const forwardSteps = (to - from + 10) % 10;
+      const backwardSteps = (from - to + 10) % 10;
+      const forward = forwardSteps <= backwardSteps;
+      dir = forward ? 1 : -1;
     }
 
-    // 新ページを描画
+    // 新ページ描画
     renderGrid({ state, ndc, highlight });
 
-    // めくり演出
-    if (overlay && !reduceMotion) {
-      animatePageTurn({
-        from: lastRenderedPage,
-        to: state.currentPage,
-        overlay,
-        incoming: el.grid,
-      });
+    // ふわっと切替（レイアウトを一切変えない）
+    if (pageChanged && !prefersReducedMotion()) {
+      animateGridIn(dir);
+      animateHeadingIn();
     }
 
     lastRenderedPage = state.currentPage;
+  }
+
+  function animateGridIn(dir) {
+    try {
+      if (pageAnim) pageAnim.cancel();
+
+      const dx = 14 * dir; // ほどよい移動
+      pageAnim = el.grid.animate(
+        [
+          { opacity: 0.0, transform: `translateX(${dx}px) scale(0.995)` },
+          { opacity: 1.0, transform: "translateX(0px) scale(1)" },
+        ],
+        {
+          duration: 220,
+          easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+          fill: "both",
+        }
+      );
+    } catch {
+      // animate未対応環境では何もしない
+    }
+  }
+
+  function animateHeadingIn() {
+    try {
+      el.albumHeading.animate(
+        [
+          { opacity: 0.4, transform: "translateY(2px)" },
+          { opacity: 1.0, transform: "translateY(0px)" },
+        ],
+        { duration: 180, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)", fill: "both" }
+      );
+    } catch {}
+  }
+
+  function prefersReducedMotion() {
+    return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }
 
   function renderGrid({ state, ndc, highlight }) {
@@ -202,79 +234,6 @@ export function createView() {
     }
   }
 
-  // ===== Page flip helpers =====
-  function cloneCurrentGridAsOverlay() {
-    const stage = el.gridStage || el.grid.parentElement;
-    if (!stage) return null;
-
-    const clone = el.grid.cloneNode(true);
-    clone.classList.add("grid-overlay");
-    clone.removeAttribute("id");
-
-    stage.appendChild(clone);
-    activeOverlay = clone;
-    return clone;
-  }
-
-  function animatePageTurn({ from, to, overlay, incoming }) {
-    // “最短方向”っぽくめくる（0..9の循環を想定）
-    const forwardSteps = (to - from + 10) % 10;   // 0..9
-    const backwardSteps = (from - to + 10) % 10;  // 0..9
-    const forward = forwardSteps <= backwardSteps; // forwardが短いなら前へ
-
-    const duration = 520;
-    const easing = "cubic-bezier(0.2, 0.8, 0.2, 1)";
-
-    // 前へ：旧ページが左へ倒れ、新ページが右から入る
-    // 戻る：旧ページが右へ倒れ、新ページが左から入る
-    const outAngle = forward ? -88 : 88;
-    const inAngle = forward ? 88 : -88;
-
-    overlay.style.transformOrigin = forward ? "left center" : "right center";
-    incoming.style.transformOrigin = forward ? "right center" : "left center";
-
-    // 既存のアニメが走っていたら終了
-    activeAnims.forEach((a) => { try { a.cancel(); } catch {} });
-    activeAnims = [];
-
-    const outAnim = overlay.animate(
-      [
-        { transform: "rotateY(0deg)", opacity: 1, filter: "brightness(1)" },
-        { transform: `rotateY(${outAngle}deg)`, opacity: 0.05, filter: "brightness(0.86)" },
-      ],
-      { duration, easing, fill: "forwards" }
-    );
-
-    const inAnim = incoming.animate(
-      [
-        { transform: `rotateY(${inAngle}deg)`, opacity: 0.05, filter: "brightness(0.86)" },
-        { transform: "rotateY(0deg)", opacity: 1, filter: "brightness(1)" },
-      ],
-      { duration, easing, fill: "forwards" }
-    );
-
-    activeAnims.push(outAnim, inAnim);
-
-    Promise.allSettled([outAnim.finished, inAnim.finished]).finally(() => {
-      cleanupOverlay();
-      // 念のためtransformをクリア
-      try { incoming.style.transform = ""; } catch {}
-      try { incoming.style.filter = ""; } catch {}
-    });
-  }
-
-  function cleanupOverlay() {
-    // 走っているアニメを止める
-    activeAnims.forEach((a) => { try { a.cancel(); } catch {} });
-    activeAnims = [];
-
-    if (activeOverlay && activeOverlay.parentElement) {
-      activeOverlay.parentElement.removeChild(activeOverlay);
-    }
-    activeOverlay = null;
-  }
-
-  // ===== Progress =====
   function countPageDisplayFilled({ state, ndc, page }) {
     const validCount = ndc.validByPage[page].length;
     const invalidCount = 100 - validCount;
@@ -293,7 +252,6 @@ export function createView() {
     return invalidCountTotal + filledValid;
   }
 
-  // ===== Utils =====
   function makeHeaderCell(text, opts = {}) {
     const div = document.createElement("div");
     div.className = opts.vertical ? "vcell" : "hcell";
