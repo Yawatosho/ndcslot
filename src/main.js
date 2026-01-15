@@ -128,7 +128,8 @@ async function onSpin({ mode }) {
 
   isSpinning = false;
 
-  rerender({ highlight: { page: result.x, row: result.y, col: result.z } });
+rerender({ highlight: { page: result.x, row: result.y, col: result.z, pop: outcome.isNew } });
+
 
   const subj = ndc.getSubject(result.code) ?? "";
   view.toast(`${pity ? "救済" : "結果"}: ${result.code}${subj ? ` / ${subj}` : ""}`);
