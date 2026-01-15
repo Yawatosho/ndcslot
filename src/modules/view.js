@@ -216,11 +216,7 @@ const isHL = Boolean(highlight)
 
 if (isHL) cell.dataset.highlight = "true";
 
-// 新規スタンプ時だけ「ポン」
-// ※ prefers-reduced-motion の人には出さない
-if (isHL && highlight?.pop && !prefersReducedMotion()) {
-  cell.dataset.pop = "true";
-}
+
 
         function prefersReducedMotion() {
   return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -233,7 +229,14 @@ if (isHL && highlight?.pop && !prefersReducedMotion()) {
           cell.innerHTML = `<span class="mini">—</span>`;
           cell.title = `${code}（対象外）`;
         } else if (filled) {
-          cell.innerHTML = `<span class="stamp">●</span>`;
+const doPop = Boolean(highlight)
+  && highlight.page === page
+  && highlight.row === row
+  && highlight.col === col
+  && highlight.pop
+  && !prefersReducedMotion();
+
+cell.innerHTML = `<span class="stamp${doPop ? " pop" : ""}">●</span>`;
           cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
         } else {
           cell.innerHTML = `<span class="mini">${row}${col}</span>`;
