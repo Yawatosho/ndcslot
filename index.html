@@ -21,6 +21,10 @@
 
       --r2:22px;
       --shadow: 0 10px 30px rgba(0,0,0,.35);
+
+      /* ★追加：グリッド高さと“内側の上下余白”を変数で管理 */
+      --gridH: 420px;
+      --gridPadY: 18px; /* ←ここを好みで調整（例：14〜28px） */
     }
 
     *{ box-sizing:border-box }
@@ -273,13 +277,12 @@
 
     /* めくり中の縦伸び防止：グリッド領域の高さを固定してレイアウトを安定させる */
     .grid-wrap{
-      min-height: 420px; /* ← まずはこの値で。環境により 400〜460 で微調整 */
+      min-height: calc(var(--gridH) + (var(--gridPadY) * 2));
+      overflow: hidden; /* スライドのはみ出し防止 */
     }
 
     .grid-stage{
-      min-height: 420px;
-      /* ★追加：グリッドステージ自体に上下の余白（ご希望） */
-      padding-block: 18px; /* お好みで 12〜28px */
+      min-height: calc(var(--gridH) + (var(--gridPadY) * 2));
     }
 
     .grid{
@@ -288,14 +291,13 @@
       gap: 6px;
       align-items:stretch;
 
-      height: 420px;
+      /* ★ご希望：grid 自体に上下パディング */
+      padding-block: var(--gridPadY);
+
+      /* ★固定高さもパディング込みで増やす（クリップ防止） */
+      height: calc(var(--gridH) + (var(--gridPadY) * 2));
       align-content: start;
       will-change: transform, opacity;
-    }
-
-    /* ページ切り替えのスライドがはみ出さないように */
-    .grid-wrap{
-      overflow: hidden;
     }
 
     .hcell, .vcell{
@@ -419,237 +421,236 @@
 
     /* =========================
        Calm Pop Theme (override)
-       末尾に貼って上書きしてください
        ========================= */
 
-    :root{
-      --bg: #fbfaf8;
-      --surface: #ffffff;
-      --surface2: #f6f4f0;
-      --ink: #1f2937;
-      --muted: #6b7280;
+:root{
+  --bg: #fbfaf8;
+  --surface: #ffffff;
+  --surface2: #f6f4f0;
+  --ink: #1f2937;
+  --muted: #6b7280;
 
-      --accent: #4db7a6;
-      --accent2:#f29a7a;
-      --accent3:#7c7fe6;
+  --accent: #4db7a6;
+  --accent2:#f29a7a;
+  --accent3:#7c7fe6;
 
-      --border: rgba(31,41,55,0.10);
-      --border2: rgba(31,41,55,0.14);
-      --shadow: 0 10px 24px rgba(31,41,55,0.08);
-      --shadow2: 0 6px 14px rgba(31,41,55,0.07);
+  --border: rgba(31,41,55,0.10);
+  --border2: rgba(31,41,55,0.14);
+  --shadow: 0 10px 24px rgba(31,41,55,0.08);
+  --shadow2: 0 6px 14px rgba(31,41,55,0.07);
 
-      --radius: 14px;
-      --radius2: 18px;
-    }
+  --radius: 14px;
+  --radius2: 18px;
+}
 
-    body{
-      background: var(--bg);
-      color: var(--ink);
-    }
+body{
+  background: var(--bg);
+  color: var(--ink);
+}
 
-    #main, .wrap-content{
-      background: transparent;
-    }
+#main, .wrap-content{
+  background: transparent;
+}
 
-    .panel, .card, .box, .left, .right{
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius2);
-      box-shadow: var(--shadow2);
-    }
+.panel, .card, .box, .left, .right{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  box-shadow: var(--shadow2);
+}
 
-    #left, #right, #slotPanel, #albumPanel{
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius2);
-      box-shadow: var(--shadow2);
-    }
+#left, #right, #slotPanel, #albumPanel{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  box-shadow: var(--shadow2);
+}
 
-    h1, h2, .section-title, #albumHeading{
-      letter-spacing: 0.02em;
-    }
+h1, h2, .section-title, #albumHeading{
+  letter-spacing: 0.02em;
+}
 
-    #albumHeading{
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: linear-gradient(90deg, rgba(77,183,166,0.14), rgba(242,154,122,0.12));
-      border: 1px solid var(--border);
-    }
+#albumHeading{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(77,183,166,0.14), rgba(242,154,122,0.12));
+  border: 1px solid var(--border);
+}
 
-    #slot, .slot, .slot-box{
-      background: linear-gradient(180deg, var(--surface), var(--surface2));
-      border: 1px solid var(--border);
-      border-radius: var(--radius2);
-      box-shadow: var(--shadow2);
-    }
+#slot, .slot, .slot-box{
+  background: linear-gradient(180deg, var(--surface), var(--surface2));
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  box-shadow: var(--shadow2);
+}
 
-    #d0, #d1, #d2, .digit{
-      background: #fff;
-      border: 1px solid var(--border2);
-      border-radius: 12px;
-      box-shadow: 0 3px 10px rgba(31,41,55,0.06);
-    }
+#d0, #d1, #d2, .digit{
+  background: #fff;
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(31,41,55,0.06);
+}
 
-    button, .btn{
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: #fff;
-      color: var(--ink);
-      box-shadow: 0 10px 20px rgba(31,41,55,0.07);
-      transform: translateY(0);
-      transition: transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
-    }
+button, .btn{
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 10px 20px rgba(31,41,55,0.07);
+  transform: translateY(0);
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
+}
 
-    button:hover, .btn:hover{
-      transform: translateY(-1px);
-      box-shadow: var(--shadow);
-      border-color: rgba(77,183,166,0.35);
-    }
+button:hover, .btn:hover{
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+  border-color: rgba(77,183,166,0.35);
+}
 
-    button:active, .btn:active{
-      transform: translateY(0);
-      box-shadow: 0 6px 12px rgba(31,41,55,0.08);
-    }
+button:active, .btn:active{
+  transform: translateY(0);
+  box-shadow: 0 6px 12px rgba(31,41,55,0.08);
+}
 
-    button:disabled{
-      opacity: .55;
-      box-shadow: none;
-    }
+button:disabled{
+  opacity: .55;
+  box-shadow: none;
+}
 
-    #spinBtn{
-      background: linear-gradient(90deg, rgba(77,183,166,0.18), rgba(77,183,166,0.08));
-      border-color: rgba(77,183,166,0.45);
-    }
-    #useTicketSpinBtn{
-      background: linear-gradient(90deg, rgba(242,154,122,0.18), rgba(242,154,122,0.08));
-      border-color: rgba(242,154,122,0.45);
-    }
+#spinBtn{
+  background: linear-gradient(90deg, rgba(77,183,166,0.18), rgba(77,183,166,0.08));
+  border-color: rgba(77,183,166,0.45);
+}
+#useTicketSpinBtn{
+  background: linear-gradient(90deg, rgba(242,154,122,0.18), rgba(242,154,122,0.08));
+  border-color: rgba(242,154,122,0.45);
+}
 
-    .tab{
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: #fff;
-      box-shadow: 0 6px 12px rgba(31,41,55,0.05);
-      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
-    }
-    .tab:hover{
-      transform: translateY(-1px);
-      border-color: rgba(124,127,230,0.35);
-    }
-    .tab[data-active="true"]{
-      background: linear-gradient(90deg, rgba(124,127,230,0.18), rgba(77,183,166,0.12));
-      border-color: rgba(124,127,230,0.45);
-    }
+.tab{
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: 0 6px 12px rgba(31,41,55,0.05);
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
+}
+.tab:hover{
+  transform: translateY(-1px);
+  border-color: rgba(124,127,230,0.35);
+}
+.tab[data-active="true"]{
+  background: linear-gradient(90deg, rgba(124,127,230,0.18), rgba(77,183,166,0.12));
+  border-color: rgba(124,127,230,0.45);
+}
 
-    .grid-wrap{
-      overflow: hidden;
-      border-radius: var(--radius2);
-    }
+.grid-wrap{
+  overflow: hidden;
+  border-radius: var(--radius2);
+}
 
-    .grid, #grid{
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: var(--radius2);
-      box-shadow: var(--shadow2);
-    }
+.grid, #grid{
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  box-shadow: var(--shadow2);
+}
 
-    .cell{
-      border-radius: 10px;
-      border: 1px solid rgba(31,41,55,0.08);
-      background: #fff;
-      transition: transform .12s ease, background .12s ease, border-color .12s ease;
-    }
+.cell{
+  border-radius: 10px;
+  border: 1px solid rgba(31,41,55,0.08);
+  background: #fff;
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+}
 
-    .cell:hover{
-      transform: translateY(-1px);
-      border-color: rgba(77,183,166,0.35);
-      background: rgba(77,183,166,0.06);
-    }
+.cell:hover{
+  transform: translateY(-1px);
+  border-color: rgba(77,183,166,0.35);
+  background: rgba(77,183,166,0.06);
+}
 
-    .cell[data-filled="true"]{
-      background: rgba(77,183,166,0.08);
-      border-color: rgba(77,183,166,0.22);
-    }
+.cell[data-filled="true"]{
+  background: rgba(77,183,166,0.08);
+  border-color: rgba(77,183,166,0.22);
+}
 
-    .cell[data-invalid="true"]{
-      background: rgba(107,114,128,0.06);
-      border-color: rgba(107,114,128,0.14);
-    }
+.cell[data-invalid="true"]{
+  background: rgba(107,114,128,0.06);
+  border-color: rgba(107,114,128,0.14);
+}
 
-    .cell[data-highlight="true"]{
-      box-shadow: 0 0 0 3px rgba(242,154,122,0.20);
-    }
+.cell[data-highlight="true"]{
+  box-shadow: 0 0 0 3px rgba(242,154,122,0.20);
+}
 
-    .stamp{
-      color: rgba(31,41,55,0.86);
-    }
+.stamp{
+  color: rgba(31,41,55,0.86);
+}
 
-    #toast{
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,0.92);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(6px);
-    }
+#toast{
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.92);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
+}
 
-    button:focus-visible, .tab:focus-visible{
-      outline: none;
-      box-shadow: 0 0 0 4px rgba(124,127,230,0.18), var(--shadow2);
-    }
+button:focus-visible, .tab:focus-visible{
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(124,127,230,0.18), var(--shadow2);
+}
 
-    @media (prefers-reduced-motion: reduce){
-      * { transition: none !important; animation: none !important; }
-    }
+@media (prefers-reduced-motion: reduce){
+  * { transition: none !important; animation: none !important; }
+}
 
-    /* =========================
-       Contrast Fix for Calm Pop
-       ========================= */
-    :root{
-      --bg:#fbfaf8;
-      --panel:#ffffff;
-      --text:#1f2937;
-      --muted:#556274;
-      --line:rgba(31,41,55,0.12);
-      --accent:#4db7a6;
-      --good:#4db7a6;
-      --warn:#f29a7a;
-      --bad:#e46b6b;
+/* =========================
+   Contrast Fix for Calm Pop
+   ========================= */
+:root{
+  --bg:#fbfaf8;
+  --panel:#ffffff;
+  --text:#1f2937;
+  --muted:#556274;
+  --line:rgba(31,41,55,0.12);
+  --accent:#4db7a6;
+  --good:#4db7a6;
+  --warn:#f29a7a;
+  --bad:#e46b6b;
 
-      --ink:#1f2937;
-      --surface:#ffffff;
-      --surface2:#f6f4f0;
-      --border:rgba(31,41,55,0.12);
-      --border2:rgba(31,41,55,0.16);
-    }
+  --ink:#1f2937;
+  --surface:#ffffff;
+  --surface2:#f6f4f0;
+  --border:rgba(31,41,55,0.12);
+  --border2:rgba(31,41,55,0.16);
+}
 
-    .result-line{
-      color: var(--muted);
-    }
-    .code-badge{
-      color: var(--text);
-      background: rgba(77,183,166,0.12);
-      border-color: rgba(77,183,166,0.35);
-    }
-    .subject-badge{
-      color: var(--text);
-      background: rgba(31,41,55,0.04);
-      border-color: rgba(31,41,55,0.12);
-    }
+.result-line{
+  color: var(--muted);
+}
+.code-badge{
+  color: var(--text);
+  background: rgba(77,183,166,0.12);
+  border-color: rgba(77,183,166,0.35);
+}
+.subject-badge{
+  color: var(--text);
+  background: rgba(31,41,55,0.04);
+  border-color: rgba(31,41,55,0.12);
+}
 
-    .hcell, .vcell{
-      color: rgba(31,41,55,0.55);
-    }
-    .cell .mini{
-      color: rgba(31,41,55,0.38);
-      font-weight: 800;
-    }
+.hcell, .vcell{
+  color: rgba(31,41,55,0.55);
+}
+.cell .mini{
+  color: rgba(31,41,55,0.38);
+  font-weight: 800;
+}
 
-    .cell[data-invalid="true"]::after{
-      color: rgba(31,41,55,0.45);
-    }
+.cell[data-invalid="true"]::after{
+  color: rgba(31,41,55,0.45);
+}
   </style>
 </head>
 
