@@ -33,6 +33,7 @@ export function createView() {
   let toastTimer = null;
   let lastRenderedPage = null;
   let pageAnim = null;
+let popTimers = [];
 
   function prefersReducedMotion() {
     return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -243,6 +244,9 @@ const popDelayMs =
   function renderGrid({ state, ndc, highlight, popDelayMs = 0 }) {
     const page = state.currentPage;
     el.grid.innerHTML = "";
+    // 前回レンダーで仕込んだ「後から●に差し替え」タイマーを掃除
+for (const id of popTimers) clearTimeout(id);
+popTimers = [];
 
     el.grid.appendChild(makeHeaderCell(""));
     for (let col = 0; col < 10; col++) el.grid.appendChild(makeHeaderCell(String(col)));
@@ -273,11 +277,29 @@ const popDelayMs =
           cell.innerHTML = `<span class="mini">—</span>`;
           cell.title = `${code}（対象外）`;
         } else if (filled) {
-          const doPop = isHL && Boolean(highlight?.pop) && !prefersReducedMotion();
-          const delayAttr = (doPop && popDelayMs > 0) ? ` style="animation-delay:${popDelayMs}ms"` : "";
-          cell.innerHTML = `<span class="stamp${doPop ? " pop" : ""}"${delayAttr}>●</span>`;
-          cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
-        } else {
+} else if (filled) {
+  const doPop = isHL && Boolean(highlight?.pop) && !prefersReducedMotion();
+
+  // ポン演出があり、かつ「遅延」がある場合：
+  // その間は3桁の数字を表示 → 時間が来たら ● に差し替えてポン開始
+  if (doPop && popDelayMs > 0) {
+    // まずは数字を表示（待ち時間の見た目を良くする）
+    cell.innerHTML = `<span class="mini">${code}</span>`;
+    cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
+
+    const tid = setTimeout(() => {
+      // 時間が来たら●に差し替え（ここではdelay不要、即ポン）
+      cell.innerHTML = `<span class="stamp pop">●</span>`;
+    }, popDelayMs);
+
+    popTimers.push(tid);
+  } else {
+    // 遅延なし（またはポンなし）は従来どおり
+    cell.innerHTML = `<span class="stamp${doPop ? " pop" : ""}">●</span>`;
+    cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
+  }
+}
+ else {
           // ★変更：未取得マスは3桁（XYZ）表示
           cell.innerHTML = `<span class="mini">${code}</span>`;
           cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
