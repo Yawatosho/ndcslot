@@ -142,7 +142,11 @@ export function createView() {
     }
 
     // 新ページ描画
-    renderGrid({ state, ndc, highlight });
+const PAGE_TRANSITION_MS = 220; // animateGridInと同じ
+const popDelayMs = (pageChanged && !prefersReducedMotion()) ? PAGE_TRANSITION_MS : 0;
+
+renderGrid({ state, ndc, highlight, popDelayMs });
+
 
     // ふわっと切替（レイアウトを一切変えない）
     if (pageChanged && !prefersReducedMotion()) {
@@ -190,7 +194,7 @@ export function createView() {
     return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }
 
-  function renderGrid({ state, ndc, highlight }) {
+function renderGrid({ state, ndc, highlight, popDelayMs = 0 }) {
     const page = state.currentPage;
     el.grid.innerHTML = "";
 
@@ -236,7 +240,9 @@ const doPop = Boolean(highlight)
   && highlight.pop
   && !prefersReducedMotion();
 
-cell.innerHTML = `<span class="stamp${doPop ? " pop" : ""}">●</span>`;
+const delayAttr = doPop && popDelayMs > 0 ? ` style="animation-delay:${popDelayMs}ms"` : "";
+cell.innerHTML = `<span class="stamp${doPop ? " pop" : ""}"${delayAttr}>●</span>`;
+
           cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
         } else {
           cell.innerHTML = `<span class="mini">${row}${col}</span>`;
