@@ -28,7 +28,7 @@ export function createView() {
   };
 
   const PAGE_TRANSITION_MS = 220;
-  const STAMP_POP_AFTER_PAGE_MS = 420; // ここを好みで調整（例：420〜700）
+  const STAMP_POP_AFTER_PAGE_MS = 220; // ここを好みで調整（例：420〜700）
 
   let toastTimer = null;
   let lastRenderedPage = null;
