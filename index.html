@@ -525,10 +525,7 @@ button:disabled{
   background: linear-gradient(90deg, rgba(77,183,166,0.18), rgba(77,183,166,0.08));
   border-color: rgba(77,183,166,0.45);
 }
-#useTicketSpinBtn{
-  background: linear-gradient(90deg, rgba(242,154,122,0.18), rgba(242,154,122,0.08));
-  border-color: rgba(242,154,122,0.45);
-}
+/* useTicketSpinBtn（無料/券スピン切替）は廃止：しおり券=コイン制 */
 
 .tab{
   border-radius: 999px;
@@ -672,12 +669,12 @@ button:focus-visible, .tab:focus-visible{
       <div class="panel-inner">
         <div class="row" role="status" aria-live="polite">
           <div class="stat">
-            <div class="k">今日の無料スピン</div>
-            <div class="v"><span id="freeSpinsLeft">-</span> / 10</div>
-          </div>
-          <div class="stat">
             <div class="k">しおり券</div>
             <div class="v"><span id="bookmarkTickets">-</span></div>
+          </div>
+          <div class="stat">
+            <div class="k">総スピン</div>
+            <div class="v"><span id="totalSpins">-</span></div>
           </div>
           <div class="stat">
             <div class="k">ダブり連続</div>
@@ -703,16 +700,15 @@ button:focus-visible, .tab:focus-visible{
         </div>
 
         <div class="btns">
-          <button class="primary" id="spinBtn" disabled>回す</button>
-          <button id="useTicketSpinBtn" disabled>しおり券10枚で回す</button>
+          <button class="primary" id="spinBtn" disabled>回す（しおり券 -1）</button>
           <button class="danger" id="resetBtn">データ初期化（開発用）</button>
         </div>
 
         <div class="hint">
-          ・無料スピンが残っている間は「回す」で消費します。<br>
-          ・無料が0のときは「しおり券10枚で回す」が有効になります。<br>
-          ・新規+2 / ダブり+1 / ページコンプ+50<br>
-          ・対象外（分類なし）の3桁はスロットに出ません（スタンプ帳では灰色表示）。
+          ・しおり券を1枚消費して回します。<br>
+          ・新規+8 / ダブり+1 / ページコンプ+50（しおり券）<br>
+          ・ゾロ目+1000 / 連番+300（ほか、ちょいボーナスあり）<br>
+          ・対象外（分類なし）の3桁はスロットに出ません（スタンプ帳では灰色表示／最初から埋まり扱い）。
         </div>
       </div>
     </section>
@@ -745,6 +741,6 @@ button:focus-visible, .tab:focus-visible{
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script type="module" src="./src/main.js?v=2"></script>
+  <script type="module" src="./src/main.js?v=20260116a"></script>
 </body>
 </html>
