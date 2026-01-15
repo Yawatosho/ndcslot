@@ -420,6 +420,213 @@
   animation-fill-mode: both; /* delay中も0%で待機して違和感なし */
 }
 
+    /* =========================
+   Calm Pop Theme (override)
+   末尾に貼って上書きしてください
+   ========================= */
+
+:root{
+  /* 背景と文字 */
+  --bg: #fbfaf8;
+  --surface: #ffffff;
+  --surface2: #f6f4f0;
+  --ink: #1f2937;
+  --muted: #6b7280;
+
+  /* 落ち着いたポップ感の軸（くすみミント＋アプリコット） */
+  --accent: #4db7a6;     /* mint */
+  --accent2:#f29a7a;     /* apricot */
+  --accent3:#7c7fe6;     /* lavender（ポイント用） */
+
+  /* 罫線・影 */
+  --border: rgba(31,41,55,0.10);
+  --border2: rgba(31,41,55,0.14);
+  --shadow: 0 10px 24px rgba(31,41,55,0.08);
+  --shadow2: 0 6px 14px rgba(31,41,55,0.07);
+
+  --radius: 14px;
+  --radius2: 18px;
+}
+
+/* 全体 */
+body{
+  background: var(--bg);
+  color: var(--ink);
+}
+
+#main, .wrap-content{
+  background: transparent;
+}
+
+/* 2カラムのカード感（左：ルーレット／右：スタンプ帳） */
+.panel, .card, .box, .left, .right{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  box-shadow: var(--shadow2);
+}
+
+/* もし既存が id で管理されている場合の保険（よくある） */
+#left, #right, #slotPanel, #albumPanel{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  box-shadow: var(--shadow2);
+}
+
+/* 見出し */
+h1, h2, .section-title, #albumHeading{
+  letter-spacing: 0.02em;
+}
+
+#albumHeading{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(77,183,166,0.14), rgba(242,154,122,0.12));
+  border: 1px solid var(--border);
+}
+
+/* スロット表示の“窓”をポップに */
+#slot, .slot, .slot-box{
+  background: linear-gradient(180deg, var(--surface), var(--surface2));
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  box-shadow: var(--shadow2);
+}
+
+#d0, #d1, #d2, .digit{
+  background: #fff;
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(31,41,55,0.06);
+}
+
+/* ボタン：落ち着いたポップ（派手にせず“押したくなる”） */
+button, .btn{
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 10px 20px rgba(31,41,55,0.07);
+  transform: translateY(0);
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
+}
+
+button:hover, .btn:hover{
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+  border-color: rgba(77,183,166,0.35);
+}
+
+button:active, .btn:active{
+  transform: translateY(0);
+  box-shadow: 0 6px 12px rgba(31,41,55,0.08);
+}
+
+button:disabled{
+  opacity: .55;
+  box-shadow: none;
+}
+
+/* “メインボタンっぽい”見せ方（idがある場合の保険） */
+#spinBtn{
+  background: linear-gradient(90deg, rgba(77,183,166,0.18), rgba(77,183,166,0.08));
+  border-color: rgba(77,183,166,0.45);
+}
+#useTicketSpinBtn{
+  background: linear-gradient(90deg, rgba(242,154,122,0.18), rgba(242,154,122,0.08));
+  border-color: rgba(242,154,122,0.45);
+}
+
+/* タブを“丸いバッジ”に */
+.tab{
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: 0 6px 12px rgba(31,41,55,0.05);
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
+}
+.tab:hover{
+  transform: translateY(-1px);
+  border-color: rgba(124,127,230,0.35);
+}
+.tab[data-active="true"]{
+  background: linear-gradient(90deg, rgba(124,127,230,0.18), rgba(77,183,166,0.12));
+  border-color: rgba(124,127,230,0.45);
+}
+
+/* グリッド（スタンプ帳）を“ほんのりポップ”に */
+.grid-wrap{
+  overflow: hidden; /* スライドのはみ出し防止（入れてあればOK） */
+  border-radius: var(--radius2);
+}
+
+.grid, #grid{
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  box-shadow: var(--shadow2);
+}
+
+/* セル */
+.cell{
+  border-radius: 10px;
+  border: 1px solid rgba(31,41,55,0.08);
+  background: #fff;
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+}
+
+.cell:hover{
+  transform: translateY(-1px);
+  border-color: rgba(77,183,166,0.35);
+  background: rgba(77,183,166,0.06);
+}
+
+/* 押印済み：ミントの“ぽてっ”とした感じ */
+.cell[data-filled="true"]{
+  background: rgba(77,183,166,0.08);
+  border-color: rgba(77,183,166,0.22);
+}
+
+/* 対象外：落ち着いた無効感 */
+.cell[data-invalid="true"]{
+  background: rgba(107,114,128,0.06);
+  border-color: rgba(107,114,128,0.14);
+}
+
+/* ハイライト：さりげないリング */
+.cell[data-highlight="true"]{
+  box-shadow: 0 0 0 3px rgba(242,154,122,0.20);
+}
+
+/* 押印記号を“太字っぽく”見せる（既存の pop アニメに合う） */
+.stamp{
+  color: rgba(31,41,55,0.86);
+}
+
+/* トーストもポップに */
+#toast{
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.92);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
+}
+
+/* フォーカス（キーボード操作も気持ちよく） */
+button:focus-visible, .tab:focus-visible{
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(124,127,230,0.18), var(--shadow2);
+}
+
+/* 動きを減らす設定 */
+@media (prefers-reduced-motion: reduce){
+  * { transition: none !important; animation: none !important; }
+}
+
 
 
   </style>
