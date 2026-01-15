@@ -1,19 +1,18 @@
 // src/modules/state.js
-// localStorage 保存・復元、日替わり処理、初期化
+// localStorage 保存・復元、初期化
 
 /**
  * @typedef {Object} GameState
- * @property {string} lastPlayDateKey
- * @property {number} freeSpinsLeft
  * @property {number} bookmarkTickets
  * @property {number} dupeStreak
  * @property {number} currentPage
  * @property {boolean[][][]} stamps
  * @property {boolean[]} pageRewarded
+ * @property {string=} lastResultCode
  * @property {{totalSpins:number,totalNew:number,totalDupe:number}} stats
  */
 
-export function createInitialState({ freeSpinsPerDay }) {
+export function createInitialState({ startTickets = 300 } = {}) {
   const stamps = Array.from({ length: 10 }, () =>
     Array.from({ length: 10 }, () =>
       Array.from({ length: 10 }, () => false)
@@ -21,19 +20,19 @@ export function createInitialState({ freeSpinsPerDay }) {
   );
 
   return {
-    lastPlayDateKey: getTodayKey(),
-    freeSpinsLeft: freeSpinsPerDay,
-    bookmarkTickets: 0,
+    schemaVersion: 2,
+    bookmarkTickets: Math.max(0, Math.trunc(Number(startTickets ?? 300))),
     dupeStreak: 0,
     currentPage: 0,
     stamps,
     pageRewarded: Array.from({ length: 10 }, () => false),
+    lastResultCode: "000",
     stats: { totalSpins: 0, totalNew: 0, totalDupe: 0 },
   };
 }
 
-export function loadState({ saveKey, freeSpinsPerDay }) {
-  const base = createInitialState({ freeSpinsPerDay });
+export function loadState({ saveKey, startTickets = 300 }) {
+  const base = createInitialState({ startTickets });
 
   try {
     const raw = localStorage.getItem(saveKey);
@@ -46,11 +45,10 @@ export function loadState({ saveKey, freeSpinsPerDay }) {
     const merged = { ...base, ...parsed };
 
     // 形の補正
-    merged.freeSpinsLeft = clampInt(merged.freeSpinsLeft, 0, freeSpinsPerDay);
     merged.bookmarkTickets = Math.max(0, Number(merged.bookmarkTickets ?? 0));
     merged.dupeStreak = clampInt(merged.dupeStreak, 0, 7);
     merged.currentPage = clampInt(merged.currentPage, 0, 9);
-    merged.lastPlayDateKey = String(merged.lastPlayDateKey ?? getTodayKey());
+    merged.lastResultCode = String(merged.lastResultCode ?? "000");
 
     if (!Array.isArray(merged.pageRewarded) || merged.pageRewarded.length !== 10) {
       merged.pageRewarded = Array.from({ length: 10 }, () => false);
@@ -61,6 +59,15 @@ export function loadState({ saveKey, freeSpinsPerDay }) {
       merged.stats.totalSpins = Number(merged.stats.totalSpins ?? 0);
       merged.stats.totalNew = Number(merged.stats.totalNew ?? 0);
       merged.stats.totalDupe = Number(merged.stats.totalDupe ?? 0);
+    }
+
+    // 旧セーブ（schemaVersionが無い/古い）への軽い移行
+    const v = Number(merged.schemaVersion ?? 1);
+    if (!Number.isFinite(v) || v < 2) {
+      merged.schemaVersion = 2;
+      // 無料スピン制から「しおり券のみ」へ切替：最低所持を付与（既に多いなら維持）
+      merged.bookmarkTickets = Math.max(merged.bookmarkTickets, Math.max(0, Math.trunc(Number(startTickets ?? 300))));
+      if (!merged.lastResultCode || !/^[0-9]{3}$/.test(merged.lastResultCode)) merged.lastResultCode = "000";
     }
 
     return merged;
@@ -77,26 +84,6 @@ export function saveState({ saveKey }, state) {
     console.warn("Failed to save state.", e);
     throw e;
   }
-}
-
-/**
- * 日付が変わっていたら無料回数を復活
- * dupeStreakは現仕様では維持（後で調整しやすい）
- */
-export function applyDailyResetIfNeeded({ state, freeSpinsPerDay }) {
-  const today = getTodayKey();
-  if (state.lastPlayDateKey !== today) {
-    state.lastPlayDateKey = today;
-    state.freeSpinsLeft = freeSpinsPerDay;
-  }
-}
-
-export function getTodayKey() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
 }
 
 function isStampsShapeOk(stamps) {
