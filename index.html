@@ -210,11 +210,6 @@
     }
 
     /* Album */
-    /* ★追加：スタンプ帳（右パネル）全体の上下余白 */
-    .album-pad{
-      padding-block: 18px; /* お好みで 12〜26px */
-    }
-
     .album-head{
       display:flex;
       align-items:flex-start;
@@ -275,36 +270,34 @@
     }
 
     .grid-wrap{ padding: 14px 16px 18px; }
+
+    /* めくり中の縦伸び防止：グリッド領域の高さを固定してレイアウトを安定させる */
+    .grid-wrap{
+      min-height: 420px; /* ← まずはこの値で。環境により 400〜460 で微調整 */
+    }
+
+    .grid-stage{
+      min-height: 420px;
+      /* ★追加：グリッドステージ自体に上下の余白（ご希望） */
+      padding-block: 18px; /* お好みで 12〜28px */
+    }
+
     .grid{
       display:grid;
       grid-template-columns: 28px repeat(10, 1fr);
       gap: 6px;
       align-items:stretch;
+
+      height: 420px;
+      align-content: start;
+      will-change: transform, opacity;
     }
 
-    /* めくり中の縦伸び防止：グリッド領域の高さを固定してレイアウトを安定させる */
-.grid-wrap{
-  min-height: 420px; /* ← まずはこの値で。環境により 400〜460 で微調整 */
-}
+    /* ページ切り替えのスライドがはみ出さないように */
+    .grid-wrap{
+      overflow: hidden;
+    }
 
-.grid-stage{
-  min-height: 420px;
-}
-    .grid{
-  height: 420px;
-  align-content: start;
-}
-
-/* ページ切り替えのスライドがはみ出さないように */
-.grid-wrap{
-  overflow: hidden;
-}
-
-/* transform/opacity アニメ用の最適化 */
-.grid{
-  will-change: transform, opacity;
-}
-    
     .hcell, .vcell{
       display:flex;
       align-items:center;
@@ -393,299 +386,270 @@
     }
     .smalllink:hover{ color: var(--text); }
 
-/* 動きを減らす設定の人には演出を抑制 */
-@media (prefers-reduced-motion: reduce){
-  .grid-stage{ perspective: none; }
-}
+    /* 動きを減らす設定の人には演出を抑制 */
+    @media (prefers-reduced-motion: reduce){
+      .grid-stage{ perspective: none; }
+    }
 
-@keyframes stamp-pop {
-  0% {
-    transform: scale(0.6);
-    opacity: 0.2;
-    filter: none;
-  }
-  55% {
-    transform: scale(1.12);
-    opacity: 1;
-    /* “太字っぽい”瞬間：ほんのり濃く、ほんのり影 */
-    filter: drop-shadow(0 0.35px 0 rgba(0,0,0,0.45))
-            drop-shadow(0 0.9px 0 rgba(0,0,0,0.20))
-            contrast(1.08);
-  }
-  100% {
-    transform: scale(1.0);
-    opacity: 1;
-    filter: none;
-  }
-}
+    @keyframes stamp-pop {
+      0% {
+        transform: scale(0.6);
+        opacity: 0.2;
+        filter: none;
+      }
+      55% {
+        transform: scale(1.12);
+        opacity: 1;
+        filter: drop-shadow(0 0.35px 0 rgba(0,0,0,0.45))
+                drop-shadow(0 0.9px 0 rgba(0,0,0,0.20))
+                contrast(1.08);
+      }
+      100% {
+        transform: scale(1.0);
+        opacity: 1;
+        filter: none;
+      }
+    }
 
-.stamp.pop{
-  display: inline-block;
-  animation: stamp-pop 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  animation-fill-mode: both; /* delay中も0%で待機して違和感なし */
-}
+    .stamp.pop{
+      display: inline-block;
+      animation: stamp-pop 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      animation-fill-mode: both;
+    }
 
     /* =========================
-   Calm Pop Theme (override)
-   末尾に貼って上書きしてください
-   ========================= */
+       Calm Pop Theme (override)
+       末尾に貼って上書きしてください
+       ========================= */
 
-:root{
-  /* 背景と文字 */
-  --bg: #fbfaf8;
-  --surface: #ffffff;
-  --surface2: #f6f4f0;
-  --ink: #1f2937;
-  --muted: #6b7280;
+    :root{
+      --bg: #fbfaf8;
+      --surface: #ffffff;
+      --surface2: #f6f4f0;
+      --ink: #1f2937;
+      --muted: #6b7280;
 
-  /* 落ち着いたポップ感の軸（くすみミント＋アプリコット） */
-  --accent: #4db7a6;     /* mint */
-  --accent2:#f29a7a;     /* apricot */
-  --accent3:#7c7fe6;     /* lavender（ポイント用） */
+      --accent: #4db7a6;
+      --accent2:#f29a7a;
+      --accent3:#7c7fe6;
 
-  /* 罫線・影 */
-  --border: rgba(31,41,55,0.10);
-  --border2: rgba(31,41,55,0.14);
-  --shadow: 0 10px 24px rgba(31,41,55,0.08);
-  --shadow2: 0 6px 14px rgba(31,41,55,0.07);
+      --border: rgba(31,41,55,0.10);
+      --border2: rgba(31,41,55,0.14);
+      --shadow: 0 10px 24px rgba(31,41,55,0.08);
+      --shadow2: 0 6px 14px rgba(31,41,55,0.07);
 
-  --radius: 14px;
-  --radius2: 18px;
-}
+      --radius: 14px;
+      --radius2: 18px;
+    }
 
-/* 全体 */
-body{
-  background: var(--bg);
-  color: var(--ink);
-}
+    body{
+      background: var(--bg);
+      color: var(--ink);
+    }
 
-#main, .wrap-content{
-  background: transparent;
-}
+    #main, .wrap-content{
+      background: transparent;
+    }
 
-/* 2カラムのカード感（左：ルーレット／右：スタンプ帳） */
-.panel, .card, .box, .left, .right{
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius2);
-  box-shadow: var(--shadow2);
-}
+    .panel, .card, .box, .left, .right{
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius2);
+      box-shadow: var(--shadow2);
+    }
 
-/* もし既存が id で管理されている場合の保険（よくある） */
-#left, #right, #slotPanel, #albumPanel{
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius2);
-  box-shadow: var(--shadow2);
-}
+    #left, #right, #slotPanel, #albumPanel{
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius2);
+      box-shadow: var(--shadow2);
+    }
 
-/* 見出し */
-h1, h2, .section-title, #albumHeading{
-  letter-spacing: 0.02em;
-}
+    h1, h2, .section-title, #albumHeading{
+      letter-spacing: 0.02em;
+    }
 
-#albumHeading{
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(77,183,166,0.14), rgba(242,154,122,0.12));
-  border: 1px solid var(--border);
-}
+    #albumHeading{
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(77,183,166,0.14), rgba(242,154,122,0.12));
+      border: 1px solid var(--border);
+    }
 
-/* スロット表示の“窓”をポップに */
-#slot, .slot, .slot-box{
-  background: linear-gradient(180deg, var(--surface), var(--surface2));
-  border: 1px solid var(--border);
-  border-radius: var(--radius2);
-  box-shadow: var(--shadow2);
-}
+    #slot, .slot, .slot-box{
+      background: linear-gradient(180deg, var(--surface), var(--surface2));
+      border: 1px solid var(--border);
+      border-radius: var(--radius2);
+      box-shadow: var(--shadow2);
+    }
 
-#d0, #d1, #d2, .digit{
-  background: #fff;
-  border: 1px solid var(--border2);
-  border-radius: 12px;
-  box-shadow: 0 3px 10px rgba(31,41,55,0.06);
-}
+    #d0, #d1, #d2, .digit{
+      background: #fff;
+      border: 1px solid var(--border2);
+      border-radius: 12px;
+      box-shadow: 0 3px 10px rgba(31,41,55,0.06);
+    }
 
-/* ボタン：落ち着いたポップ（派手にせず“押したくなる”） */
-button, .btn{
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: #fff;
-  color: var(--ink);
-  box-shadow: 0 10px 20px rgba(31,41,55,0.07);
-  transform: translateY(0);
-  transition: transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
-}
+    button, .btn{
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--ink);
+      box-shadow: 0 10px 20px rgba(31,41,55,0.07);
+      transform: translateY(0);
+      transition: transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
+    }
 
-button:hover, .btn:hover{
-  transform: translateY(-1px);
-  box-shadow: var(--shadow);
-  border-color: rgba(77,183,166,0.35);
-}
+    button:hover, .btn:hover{
+      transform: translateY(-1px);
+      box-shadow: var(--shadow);
+      border-color: rgba(77,183,166,0.35);
+    }
 
-button:active, .btn:active{
-  transform: translateY(0);
-  box-shadow: 0 6px 12px rgba(31,41,55,0.08);
-}
+    button:active, .btn:active{
+      transform: translateY(0);
+      box-shadow: 0 6px 12px rgba(31,41,55,0.08);
+    }
 
-button:disabled{
-  opacity: .55;
-  box-shadow: none;
-}
+    button:disabled{
+      opacity: .55;
+      box-shadow: none;
+    }
 
-/* “メインボタンっぽい”見せ方（idがある場合の保険） */
-#spinBtn{
-  background: linear-gradient(90deg, rgba(77,183,166,0.18), rgba(77,183,166,0.08));
-  border-color: rgba(77,183,166,0.45);
-}
-#useTicketSpinBtn{
-  background: linear-gradient(90deg, rgba(242,154,122,0.18), rgba(242,154,122,0.08));
-  border-color: rgba(242,154,122,0.45);
-}
+    #spinBtn{
+      background: linear-gradient(90deg, rgba(77,183,166,0.18), rgba(77,183,166,0.08));
+      border-color: rgba(77,183,166,0.45);
+    }
+    #useTicketSpinBtn{
+      background: linear-gradient(90deg, rgba(242,154,122,0.18), rgba(242,154,122,0.08));
+      border-color: rgba(242,154,122,0.45);
+    }
 
-/* タブを“丸いバッジ”に */
-.tab{
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: #fff;
-  box-shadow: 0 6px 12px rgba(31,41,55,0.05);
-  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
-}
-.tab:hover{
-  transform: translateY(-1px);
-  border-color: rgba(124,127,230,0.35);
-}
-.tab[data-active="true"]{
-  background: linear-gradient(90deg, rgba(124,127,230,0.18), rgba(77,183,166,0.12));
-  border-color: rgba(124,127,230,0.45);
-}
+    .tab{
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fff;
+      box-shadow: 0 6px 12px rgba(31,41,55,0.05);
+      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
+    }
+    .tab:hover{
+      transform: translateY(-1px);
+      border-color: rgba(124,127,230,0.35);
+    }
+    .tab[data-active="true"]{
+      background: linear-gradient(90deg, rgba(124,127,230,0.18), rgba(77,183,166,0.12));
+      border-color: rgba(124,127,230,0.45);
+    }
 
-/* グリッド（スタンプ帳）を“ほんのりポップ”に */
-.grid-wrap{
-  overflow: hidden; /* スライドのはみ出し防止（入れてあればOK） */
-  border-radius: var(--radius2);
-}
+    .grid-wrap{
+      overflow: hidden;
+      border-radius: var(--radius2);
+    }
 
-.grid, #grid{
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: var(--radius2);
-  box-shadow: var(--shadow2);
-}
+    .grid, #grid{
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius2);
+      box-shadow: var(--shadow2);
+    }
 
-/* セル */
-.cell{
-  border-radius: 10px;
-  border: 1px solid rgba(31,41,55,0.08);
-  background: #fff;
-  transition: transform .12s ease, background .12s ease, border-color .12s ease;
-}
+    .cell{
+      border-radius: 10px;
+      border: 1px solid rgba(31,41,55,0.08);
+      background: #fff;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    }
 
-.cell:hover{
-  transform: translateY(-1px);
-  border-color: rgba(77,183,166,0.35);
-  background: rgba(77,183,166,0.06);
-}
+    .cell:hover{
+      transform: translateY(-1px);
+      border-color: rgba(77,183,166,0.35);
+      background: rgba(77,183,166,0.06);
+    }
 
-/* 押印済み：ミントの“ぽてっ”とした感じ */
-.cell[data-filled="true"]{
-  background: rgba(77,183,166,0.08);
-  border-color: rgba(77,183,166,0.22);
-}
+    .cell[data-filled="true"]{
+      background: rgba(77,183,166,0.08);
+      border-color: rgba(77,183,166,0.22);
+    }
 
-/* 対象外：落ち着いた無効感 */
-.cell[data-invalid="true"]{
-  background: rgba(107,114,128,0.06);
-  border-color: rgba(107,114,128,0.14);
-}
+    .cell[data-invalid="true"]{
+      background: rgba(107,114,128,0.06);
+      border-color: rgba(107,114,128,0.14);
+    }
 
-/* ハイライト：さりげないリング */
-.cell[data-highlight="true"]{
-  box-shadow: 0 0 0 3px rgba(242,154,122,0.20);
-}
+    .cell[data-highlight="true"]{
+      box-shadow: 0 0 0 3px rgba(242,154,122,0.20);
+    }
 
-/* 押印記号を“太字っぽく”見せる（既存の pop アニメに合う） */
-.stamp{
-  color: rgba(31,41,55,0.86);
-}
+    .stamp{
+      color: rgba(31,41,55,0.86);
+    }
 
-/* トーストもポップに */
-#toast{
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,0.92);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(6px);
-}
+    #toast{
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.92);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(6px);
+    }
 
-/* フォーカス（キーボード操作も気持ちよく） */
-button:focus-visible, .tab:focus-visible{
-  outline: none;
-  box-shadow: 0 0 0 4px rgba(124,127,230,0.18), var(--shadow2);
-}
+    button:focus-visible, .tab:focus-visible{
+      outline: none;
+      box-shadow: 0 0 0 4px rgba(124,127,230,0.18), var(--shadow2);
+    }
 
-/* 動きを減らす設定 */
-@media (prefers-reduced-motion: reduce){
-  * { transition: none !important; animation: none !important; }
-}
+    @media (prefers-reduced-motion: reduce){
+      * { transition: none !important; animation: none !important; }
+    }
 
-/* =========================
-   Contrast Fix for Calm Pop
-   （見えない問題の解消）
-   ========================= */
+    /* =========================
+       Contrast Fix for Calm Pop
+       ========================= */
+    :root{
+      --bg:#fbfaf8;
+      --panel:#ffffff;
+      --text:#1f2937;
+      --muted:#556274;
+      --line:rgba(31,41,55,0.12);
+      --accent:#4db7a6;
+      --good:#4db7a6;
+      --warn:#f29a7a;
+      --bad:#e46b6b;
 
-/* 元の変数名（--text/--muted など）も上書きして、白背景でも読めるようにする */
-:root{
-  /* legacy vars (元CSSが参照している) */
-  --bg:#fbfaf8;
-  --panel:#ffffff;
-  --text:#1f2937;
-  --muted:#556274;
-  --line:rgba(31,41,55,0.12);
-  --accent:#4db7a6;
-  --good:#4db7a6;
-  --warn:#f29a7a;
-  --bad:#e46b6b;
+      --ink:#1f2937;
+      --surface:#ffffff;
+      --surface2:#f6f4f0;
+      --border:rgba(31,41,55,0.12);
+      --border2:rgba(31,41,55,0.16);
+    }
 
-  /* calm-pop vars（もし使っていれば） */
-  --ink:#1f2937;
-  --surface:#ffffff;
-  --surface2:#f6f4f0;
-  --border:rgba(31,41,55,0.12);
-  --border2:rgba(31,41,55,0.16);
-}
+    .result-line{
+      color: var(--muted);
+    }
+    .code-badge{
+      color: var(--text);
+      background: rgba(77,183,166,0.12);
+      border-color: rgba(77,183,166,0.35);
+    }
+    .subject-badge{
+      color: var(--text);
+      background: rgba(31,41,55,0.04);
+      border-color: rgba(31,41,55,0.12);
+    }
 
-/* 左：最新の出目・分類をくっきり */
-.result-line{
-  color: var(--muted);
-}
-.code-badge{
-  color: var(--text);
-  background: rgba(77,183,166,0.12);
-  border-color: rgba(77,183,166,0.35);
-}
-.subject-badge{
-  color: var(--text);
-  background: rgba(31,41,55,0.04);
-  border-color: rgba(31,41,55,0.12);
-}
+    .hcell, .vcell{
+      color: rgba(31,41,55,0.55);
+    }
+    .cell .mini{
+      color: rgba(31,41,55,0.38);
+      font-weight: 800;
+    }
 
-/* 右：スタンプ帳の番号（セル内の00〜99）が消えないように */
-.hcell, .vcell{
-  color: rgba(31,41,55,0.55);
-}
-.cell .mini{
-  color: rgba(31,41,55,0.38);
-  font-weight: 800; /* うっすら太くして“ポップさ”も出す */
-}
-
-/* 対象外ラベルも薄すぎると見落とすので少しだけ濃く */
-.cell[data-invalid="true"]::after{
-  color: rgba(31,41,55,0.45);
-}
+    .cell[data-invalid="true"]::after{
+      color: rgba(31,41,55,0.45);
+    }
   </style>
 </head>
 
@@ -753,27 +717,25 @@ button:focus-visible, .tab:focus-visible{
 
     <!-- Right: Album Panel -->
     <section class="panel" aria-label="album">
-      <div class="album-pad">
-        <div class="album-head">
-          <div class="album-title">
-            <div class="h" id="albumHeading">ページ 0xx</div>
-            <div class="s">行＝10の位（Y） / 列＝1の位（Z） / マス＝XYZ</div>
-          </div>
-          <div class="progress">
-            <div class="p">進捗（対象外は最初から埋まり扱い）</div>
-            <div class="n">
-              <span id="pageProgress">-</span> / 100
-              ・全体 <span id="totalProgress">-</span> / 1000
-            </div>
+      <div class="album-head">
+        <div class="album-title">
+          <div class="h" id="albumHeading">ページ 0xx</div>
+          <div class="s">行＝10の位（Y） / 列＝1の位（Z） / マス＝XYZ</div>
+        </div>
+        <div class="progress">
+          <div class="p">進捗（対象外は最初から埋まり扱い）</div>
+          <div class="n">
+            <span id="pageProgress">-</span> / 100
+            ・全体 <span id="totalProgress">-</span> / 1000
           </div>
         </div>
+      </div>
 
-        <div class="tabs" id="tabs" aria-label="pages"></div>
+      <div class="tabs" id="tabs" aria-label="pages"></div>
 
-        <div class="grid-wrap">
-          <div class="grid-stage" id="gridStage">
-            <div class="grid" id="grid" aria-label="10x10 grid"></div>
-          </div>
+      <div class="grid-wrap">
+        <div class="grid-stage" id="gridStage">
+          <div class="grid" id="grid" aria-label="10x10 grid"></div>
         </div>
       </div>
     </section>
