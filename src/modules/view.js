@@ -209,11 +209,22 @@ export function createView() {
         cell.dataset.filled = String(filled);
         if (!valid) cell.dataset.invalid = "true";
 
-        const isHL = Boolean(highlight)
-          && highlight.page === page
-          && highlight.row === row
-          && highlight.col === col;
-        if (isHL) cell.dataset.highlight = "true";
+const isHL = Boolean(highlight)
+  && highlight.page === page
+  && highlight.row === row
+  && highlight.col === col;
+
+if (isHL) cell.dataset.highlight = "true";
+
+// 新規スタンプ時だけ「ポン」
+// ※ prefers-reduced-motion の人には出さない
+if (isHL && highlight?.pop && !prefersReducedMotion()) {
+  cell.dataset.pop = "true";
+}
+
+        function prefersReducedMotion() {
+  return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
 
         const code = `${page}${row}${col}`;
         const subj = valid ? (ndc.getSubject(code) ?? "") : "";
