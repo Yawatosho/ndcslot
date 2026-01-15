@@ -82,7 +82,7 @@ export function createView() {
   // ★変更：左→中→右の順に少し間を置いて停止する
   // - durationMs: 「最初の停止（左の桁が止まるまで）」の時間
   // - stopGapMs: 各桁の停止間隔
-  async function playSpinAnimation({ ndc, finalResult, durationMs = 420, tickMs = 55, stopGapMs = 120 }) {
+  async function playSpinAnimation({ ndc, finalResult, durationMs = 420, tickMs = 55, stopGapMs = 160 }) {
     setSubjectText("回転中…");
 
     // 動きの低減設定なら、演出を短絡
