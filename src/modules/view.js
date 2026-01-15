@@ -79,15 +79,42 @@ export function createView() {
     if (el.lastSubject) el.lastSubject.textContent = subj ? subj : "（分類なし）";
   }
 
-  async function playSpinAnimation({ ndc, finalResult, durationMs = 420, tickMs = 55 }) {
+  // ★変更：左→中→右の順に少し間を置いて停止する
+  // - durationMs: 「最初の停止（左の桁が止まるまで）」の時間
+  // - stopGapMs: 各桁の停止間隔
+  async function playSpinAnimation({ ndc, finalResult, durationMs = 420, tickMs = 55, stopGapMs = 120 }) {
     setSubjectText("回転中…");
 
+    // 動きの低減設定なら、演出を短絡
+    if (prefersReducedMotion()) {
+      setSlotDigits(finalResult.x, finalResult.y, finalResult.z);
+      return;
+    }
+
+    const stopAt0 = durationMs;                 // 左（100の位）
+    const stopAt1 = durationMs + stopGapMs;     // 中（10の位）
+    const stopAt2 = durationMs + stopGapMs * 2; // 右（1の位）
+    const total = stopAt2;
+
     const start = performance.now();
-    while (performance.now() - start < durationMs) {
-      const t = ndc.validAll[randInt(0, ndc.validAll.length - 1)];
-      setSlotDigits(t.x, t.y, t.z);
+
+    while (true) {
+      const elapsed = performance.now() - start;
+      if (elapsed >= total) break;
+
+      const t = (ndc?.validAll?.length)
+        ? ndc.validAll[randInt(0, ndc.validAll.length - 1)]
+        : { x: randInt(0, 9), y: randInt(0, 9), z: randInt(0, 9) };
+
+      const x = (elapsed >= stopAt0) ? finalResult.x : t.x;
+      const y = (elapsed >= stopAt1) ? finalResult.y : t.y;
+      const z = (elapsed >= stopAt2) ? finalResult.z : t.z;
+
+      setSlotDigits(x, y, z);
       await sleep(tickMs);
     }
+
+    // 最終確定
     setSlotDigits(finalResult.x, finalResult.y, finalResult.z);
   }
 
@@ -211,7 +238,7 @@ export function createView() {
           cell.innerHTML = `<span class="stamp${doPop ? " pop" : ""}"${delayAttr}>●</span>`;
           cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
         } else {
-          // ここを 2桁（row+col）→ 3桁（page+row+col）に変更
+          // ★変更：未取得の表示を2桁（rowcol）→ 3桁（XYZ）
           cell.innerHTML = `<span class="mini">${code}</span>`;
           cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
         }
