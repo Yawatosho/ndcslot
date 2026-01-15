@@ -627,6 +627,60 @@ button:focus-visible, .tab:focus-visible{
   * { transition: none !important; animation: none !important; }
 }
 
+/* =========================
+   Contrast Fix for Calm Pop
+   （見えない問題の解消）
+   ========================= */
+
+/* 元の変数名（--text/--muted など）も上書きして、白背景でも読めるようにする */
+:root{
+  /* legacy vars (元CSSが参照している) */
+  --bg:#fbfaf8;
+  --panel:#ffffff;
+  --text:#1f2937;
+  --muted:#556274;
+  --line:rgba(31,41,55,0.12);
+  --accent:#4db7a6;
+  --good:#4db7a6;
+  --warn:#f29a7a;
+  --bad:#e46b6b;
+
+  /* calm-pop vars（もし使っていれば） */
+  --ink:#1f2937;
+  --surface:#ffffff;
+  --surface2:#f6f4f0;
+  --border:rgba(31,41,55,0.12);
+  --border2:rgba(31,41,55,0.16);
+}
+
+/* 左：最新の出目・分類をくっきり */
+.result-line{
+  color: var(--muted);
+}
+.code-badge{
+  color: var(--text);
+  background: rgba(77,183,166,0.12);
+  border-color: rgba(77,183,166,0.35);
+}
+.subject-badge{
+  color: var(--text);
+  background: rgba(31,41,55,0.04);
+  border-color: rgba(31,41,55,0.12);
+}
+
+/* 右：スタンプ帳の番号（セル内の00〜99）が消えないように */
+.hcell, .vcell{
+  color: rgba(31,41,55,0.55);
+}
+.cell .mini{
+  color: rgba(31,41,55,0.38);
+  font-weight: 800; /* うっすら太くして“ポップさ”も出す */
+}
+
+/* 対象外ラベルも薄すぎると見落とすので少しだけ濃く */
+.cell[data-invalid="true"]::after{
+  color: rgba(31,41,55,0.45);
+}
 
 
   </style>
