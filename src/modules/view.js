@@ -3,9 +3,9 @@
 
 export function createView() {
   const el = {
-    freeSpinsLeft: document.getElementById("freeSpinsLeft"),
     bookmarkTickets: document.getElementById("bookmarkTickets"),
     dupeStreak: document.getElementById("dupeStreak"),
+    totalSpins: document.getElementById("totalSpins"),
 
     d0: document.getElementById("d0"),
     d1: document.getElementById("d1"),
@@ -14,7 +14,6 @@ export function createView() {
     lastSubject: document.getElementById("lastSubject"),
 
     spinBtn: document.getElementById("spinBtn"),
-    useTicketSpinBtn: document.getElementById("useTicketSpinBtn"),
     resetBtn: document.getElementById("resetBtn"),
 
     tabs: document.getElementById("tabs"),
@@ -52,17 +51,14 @@ export function createView() {
 
   function setButtonsEnabled(enabled) {
     el.spinBtn.disabled = !enabled;
-    el.useTicketSpinBtn.disabled = !enabled;
   }
 
-  function updateButtons({ canSpinAuto, canSpinTicket, forceDisabled = false }) {
+  function updateButtons({ canSpin, forceDisabled = false }) {
     if (forceDisabled) {
       el.spinBtn.disabled = true;
-      el.useTicketSpinBtn.disabled = true;
       return;
     }
-    el.spinBtn.disabled = !canSpinAuto;
-    el.useTicketSpinBtn.disabled = !canSpinTicket;
+    el.spinBtn.disabled = !canSpin;
   }
 
   function setSubjectText(text) {
@@ -173,9 +169,9 @@ export function createView() {
   }
 
   function render({ state, ndc, highlight }) {
-    el.freeSpinsLeft.textContent = String(state.freeSpinsLeft);
-    el.bookmarkTickets.textContent = String(state.bookmarkTickets);
-    el.dupeStreak.textContent = String(state.dupeStreak);
+    if (el.bookmarkTickets) el.bookmarkTickets.textContent = String(state.bookmarkTickets);
+    if (el.dupeStreak) el.dupeStreak.textContent = String(state.dupeStreak);
+    if (el.totalSpins) el.totalSpins.textContent = String(state.stats?.totalSpins ?? 0);
 
     el.albumHeading.textContent = `ページ ${state.currentPage}xx`;
 
