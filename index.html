@@ -210,6 +210,11 @@
     }
 
     /* Album */
+    /* ★追加：スタンプ帳（右パネル）全体の上下余白 */
+    .album-pad{
+      padding-block: 18px; /* お好みで 12〜26px */
+    }
+
     .album-head{
       display:flex;
       align-items:flex-start;
@@ -681,8 +686,6 @@ button:focus-visible, .tab:focus-visible{
 .cell[data-invalid="true"]::after{
   color: rgba(31,41,55,0.45);
 }
-
-
   </style>
 </head>
 
@@ -750,33 +753,34 @@ button:focus-visible, .tab:focus-visible{
 
     <!-- Right: Album Panel -->
     <section class="panel" aria-label="album">
-      <div class="album-head">
-        <div class="album-title">
-          <div class="h" id="albumHeading">ページ 0xx</div>
-          <div class="s">行＝10の位（Y） / 列＝1の位（Z） / マス＝XYZ</div>
+      <div class="album-pad">
+        <div class="album-head">
+          <div class="album-title">
+            <div class="h" id="albumHeading">ページ 0xx</div>
+            <div class="s">行＝10の位（Y） / 列＝1の位（Z） / マス＝XYZ</div>
+          </div>
+          <div class="progress">
+            <div class="p">進捗（対象外は最初から埋まり扱い）</div>
+            <div class="n">
+              <span id="pageProgress">-</span> / 100
+              ・全体 <span id="totalProgress">-</span> / 1000
+            </div>
+          </div>
         </div>
-        <div class="progress">
-          <div class="p">進捗（対象外は最初から埋まり扱い）</div>
-          <div class="n">
-            <span id="pageProgress">-</span> / 100
-            ・全体 <span id="totalProgress">-</span> / 1000
+
+        <div class="tabs" id="tabs" aria-label="pages"></div>
+
+        <div class="grid-wrap">
+          <div class="grid-stage" id="gridStage">
+            <div class="grid" id="grid" aria-label="10x10 grid"></div>
           </div>
         </div>
       </div>
-
-      <div class="tabs" id="tabs" aria-label="pages"></div>
-
-<div class="grid-wrap">
-  <div class="grid-stage" id="gridStage">
-    <div class="grid" id="grid" aria-label="10x10 grid"></div>
+    </section>
   </div>
-</div>
-
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script type="module" src="./src/main.js?v=2"></script>
-
 </body>
 </html>
-
