@@ -79,28 +79,37 @@ export function createView() {
     if (el.lastSubject) el.lastSubject.textContent = subj ? subj : "（分類なし）";
   }
 
-  // ★変更：左→中→右の順に少し間を置いて停止する
-  // - durationMs: 「最初の停止（左の桁が止まるまで）」の時間
-  // - stopGapMs: 各桁の停止間隔
-  async function playSpinAnimation({ ndc, finalResult, durationMs = 420, tickMs = 55, stopGapMs = 160 }) {
+  // ★変更：左→中→右の順に、少し間を置いて停止。さらに「全部出た後」も少し待ってから次処理へ。
+  // - durationMs: 最初の停止（左の桁が止まるまで）
+  // - stopGapMs: 各桁の停止間隔（0.5秒なら 500）
+  // - postResultPauseMs: 最終表示確定後〜次処理（スタンプ処理）までの待ち
+  async function playSpinAnimation({
+    ndc,
+    finalResult,
+    durationMs = 420,
+    tickMs = 55,
+    stopGapMs = 500,
+    postResultPauseMs = 450,
+  }) {
     setSubjectText("回転中…");
 
-    // 動きの低減設定なら、演出を短絡
+    // 動きの低減設定なら、演出を短絡（ただし“間”だけは最低限入れてもOK）
     if (prefersReducedMotion()) {
       setSlotDigits(finalResult.x, finalResult.y, finalResult.z);
+      if (postResultPauseMs > 0) await sleep(postResultPauseMs);
       return;
     }
 
     const stopAt0 = durationMs;                 // 左（100の位）
     const stopAt1 = durationMs + stopGapMs;     // 中（10の位）
     const stopAt2 = durationMs + stopGapMs * 2; // 右（1の位）
-    const total = stopAt2;
+    const endAt = stopAt2;
 
     const start = performance.now();
 
     while (true) {
       const elapsed = performance.now() - start;
-      if (elapsed >= total) break;
+      if (elapsed >= endAt) break;
 
       const t = (ndc?.validAll?.length)
         ? ndc.validAll[randInt(0, ndc.validAll.length - 1)]
@@ -114,8 +123,11 @@ export function createView() {
       await sleep(tickMs);
     }
 
-    // 最終確定
+    // 最終確定（ここで「全部出た」状態を作る）
     setSlotDigits(finalResult.x, finalResult.y, finalResult.z);
+
+    // ★追加：この待ちが「全部出た後、スタンプを押すまでの間」になります
+    if (postResultPauseMs > 0) await sleep(postResultPauseMs);
   }
 
   function initTabs({ onSelectPage }) {
@@ -238,7 +250,7 @@ export function createView() {
           cell.innerHTML = `<span class="stamp${doPop ? " pop" : ""}"${delayAttr}>●</span>`;
           cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
         } else {
-          // ★変更：未取得の表示を2桁（rowcol）→ 3桁（XYZ）
+          // ★変更：未取得セルは3桁（XYZ）表示
           cell.innerHTML = `<span class="mini">${code}</span>`;
           cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
         }
