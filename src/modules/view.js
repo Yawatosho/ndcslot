@@ -1,8 +1,4 @@
 // src/modules/view.js
-// 画面描画（タブ／グリッド／進捗／スロット表示／トースト）＋ スロット簡易演出 ＋ ふわっとページ切替
-
-export function createView() {
-  const el = {// src/modules/view.js
 // 画面描画（タブ／グリッド／進捗／スロット表示／トースト）＋ スロット簡易演出 ＋ ふわっとページ切替 ＋ 新規スタンプPop
 
 export function createView() {
