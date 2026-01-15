@@ -289,6 +289,16 @@
   height: 420px;
   align-content: start;
 }
+
+/* ページ切り替えのスライドがはみ出さないように */
+.grid-wrap{
+  overflow: hidden;
+}
+
+/* transform/opacity アニメ用の最適化 */
+.grid{
+  will-change: transform, opacity;
+}
     
     .hcell, .vcell{
       display:flex;
