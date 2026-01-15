@@ -6,9 +6,9 @@
    - gameCore.js（中核ロジック）✅
 */
 
-import { initNdc } from "./modules/ndc.js";
-import { loadState, saveState, applyDailyResetIfNeeded, createInitialState } from "./modules/state.js";
-import { createView } from "./modules/view.js";
+import { initNdc } from "./modules/ndc.js?v=20260115a";
+import { loadState, saveState, applyDailyResetIfNeeded, createInitialState } from "./modules/state.js?v=20260115a";
+import { createView } from "./modules/view.js?v=20260115a";
 import {
   canSpin,
   consumeSpin,
