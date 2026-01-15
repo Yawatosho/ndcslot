@@ -28,12 +28,13 @@ export function createView() {
   };
 
   const PAGE_TRANSITION_MS = 220;
-  const STAMP_POP_AFTER_PAGE_MS = 220; // ここを好みで調整（例：420〜700）
-
+  const STAMP_POP_AFTER_PAGE_MS = 220; // 追加の余韻（あなたの設定）
   let toastTimer = null;
   let lastRenderedPage = null;
   let pageAnim = null;
-let popTimers = [];
+
+  // 「ポン開始まで数字表示」用のタイマー管理
+  let popTimers = [];
 
   function prefersReducedMotion() {
     return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -81,7 +82,7 @@ let popTimers = [];
     if (el.lastSubject) el.lastSubject.textContent = subj ? subj : "（分類なし）";
   }
 
-  // ★追加：止まった桁だけ一瞬スケール（ぷるん）
+  // ★止まった桁だけ一瞬スケール（ぷるん）
   function pulseDigit(node) {
     if (!node) return;
     if (prefersReducedMotion()) return;
@@ -97,9 +98,7 @@ let popTimers = [];
     } catch {}
   }
 
-  // ★変更：左→中→右で段階停止 + 各停止で pulse
-  // stopGapMs: 各桁の停止間隔（0.5秒なら 500）
-  // postResultPauseMs: 3桁確定後〜次処理（スタンプ処理）までの待ち
+  // ★左→中→右で段階停止 + 各停止で pulse
   async function playSpinAnimation({
     ndc,
     finalResult,
@@ -116,10 +115,10 @@ let popTimers = [];
       return;
     }
 
-    const stopAt0 = durationMs;                 // 左（100の位）
-    const stopAt1 = durationMs + stopGapMs;     // 中（10の位）
-    const stopAt2 = durationMs + stopGapMs * 2; // 右（1の位）
-    const endAt = stopAt2 + Math.max(60, tickMs); // 右が止まってpulseが見える余白
+    const stopAt0 = durationMs;
+    const stopAt1 = durationMs + stopGapMs;
+    const stopAt2 = durationMs + stopGapMs * 2;
+    const endAt = stopAt2 + Math.max(60, tickMs);
 
     let stopped0 = false;
     let stopped1 = false;
@@ -130,7 +129,6 @@ let popTimers = [];
     while (true) {
       const elapsed = performance.now() - start;
 
-      // 停止タイミングで一度だけ pulse
       if (!stopped0 && elapsed >= stopAt0) { stopped0 = true; pulseDigit(el.d0); }
       if (!stopped1 && elapsed >= stopAt1) { stopped1 = true; pulseDigit(el.d1); }
       if (!stopped2 && elapsed >= stopAt2) { stopped2 = true; pulseDigit(el.d2); }
@@ -149,10 +147,8 @@ let popTimers = [];
       await sleep(tickMs);
     }
 
-    // 最終確定
     setSlotDigits(finalResult.x, finalResult.y, finalResult.z);
 
-    // ★「全部出た後〜スタンプまで」の間
     if (postResultPauseMs > 0) await sleep(postResultPauseMs);
   }
 
@@ -200,11 +196,11 @@ let popTimers = [];
       dir = forward ? 1 : -1;
     }
 
-const popDelayMs =
-  (pageChanged && !prefersReducedMotion())
-    ? (PAGE_TRANSITION_MS + STAMP_POP_AFTER_PAGE_MS)
-    : 0;
-    
+    const popDelayMs =
+      (pageChanged && !prefersReducedMotion())
+        ? (PAGE_TRANSITION_MS + STAMP_POP_AFTER_PAGE_MS)
+        : 0;
+
     renderGrid({ state, ndc, highlight, popDelayMs });
 
     if (pageChanged && !prefersReducedMotion()) {
@@ -244,9 +240,10 @@ const popDelayMs =
   function renderGrid({ state, ndc, highlight, popDelayMs = 0 }) {
     const page = state.currentPage;
     el.grid.innerHTML = "";
-    // 前回レンダーで仕込んだ「後から●に差し替え」タイマーを掃除
-for (const id of popTimers) clearTimeout(id);
-popTimers = [];
+
+    // 前回レンダーの「後から●に差し替え」タイマーを掃除
+    for (const id of popTimers) clearTimeout(id);
+    popTimers = [];
 
     el.grid.appendChild(makeHeaderCell(""));
     for (let col = 0; col < 10; col++) el.grid.appendChild(makeHeaderCell(String(col)));
@@ -276,31 +273,29 @@ popTimers = [];
         if (!valid) {
           cell.innerHTML = `<span class="mini">—</span>`;
           cell.title = `${code}（対象外）`;
+
         } else if (filled) {
-} else if (filled) {
-  const doPop = isHL && Boolean(highlight?.pop) && !prefersReducedMotion();
+          const doPop = isHL && Boolean(highlight?.pop) && !prefersReducedMotion();
 
-  // ポン演出があり、かつ「遅延」がある場合：
-  // その間は3桁の数字を表示 → 時間が来たら ● に差し替えてポン開始
-  if (doPop && popDelayMs > 0) {
-    // まずは数字を表示（待ち時間の見た目を良くする）
-    cell.innerHTML = `<span class="mini">${code}</span>`;
-    cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
+          // ポン演出かつ遅延あり：遅延中は3桁→時間が来たら●＋ポン
+          if (doPop && popDelayMs > 0) {
+            cell.innerHTML = `<span class="mini">${code}</span>`;
+            cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
 
-    const tid = setTimeout(() => {
-      // 時間が来たら●に差し替え（ここではdelay不要、即ポン）
-      cell.innerHTML = `<span class="stamp pop">●</span>`;
-    }, popDelayMs);
+            const tid = setTimeout(() => {
+              cell.innerHTML = `<span class="stamp pop">●</span>`;
+              // title は cell に保持されているので再設定不要
+            }, popDelayMs);
 
-    popTimers.push(tid);
-  } else {
-    // 遅延なし（またはポンなし）は従来どおり
-    cell.innerHTML = `<span class="stamp${doPop ? " pop" : ""}">●</span>`;
-    cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
-  }
-}
- else {
-          // ★変更：未取得マスは3桁（XYZ）表示
+            popTimers.push(tid);
+          } else {
+            // 遅延なし（またはポンなし）は従来どおり
+            cell.innerHTML = `<span class="stamp${doPop ? " pop" : ""}">●</span>`;
+            cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
+          }
+
+        } else {
+          // 未取得マスは3桁（XYZ）表示
           cell.innerHTML = `<span class="mini">${code}</span>`;
           cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
         }
