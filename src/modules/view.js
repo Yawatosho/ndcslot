@@ -211,7 +211,8 @@ export function createView() {
           cell.innerHTML = `<span class="stamp${doPop ? " pop" : ""}"${delayAttr}>●</span>`;
           cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
         } else {
-          cell.innerHTML = `<span class="mini">${row}${col}</span>`;
+          // ここを 2桁（row+col）→ 3桁（page+row+col）に変更
+          cell.innerHTML = `<span class="mini">${code}</span>`;
           cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
         }
 
