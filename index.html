@@ -285,20 +285,20 @@
       min-height: calc(var(--gridH) + (var(--gridPadY) * 2));
     }
 
-    .grid{
-      display:grid;
-      grid-template-columns: 28px repeat(10, 1fr);
-      gap: 6px;
-      align-items:stretch;
+.grid{
+  display:grid;
+  grid-template-columns: 24px repeat(10, 1fr);
+  gap: 6px;
+  align-items:stretch;
 
-      /* ★ご希望：grid 自体に上下パディング */
-      padding-block: var(--gridPadY);
+  padding-block: var(--gridPadY);
+  padding-inline: var(--gridPadX);
 
-      /* ★固定高さもパディング込みで増やす（クリップ防止） */
-      height: calc(var(--gridH) + (var(--gridPadY) * 2));
-      align-content: start;
-      will-change: transform, opacity;
-    }
+  height: calc(var(--gridH) + (var(--gridPadY) * 2));
+  align-content: start;
+  will-change: transform, opacity;
+}
+
 
     .hcell, .vcell{
       display:flex;
