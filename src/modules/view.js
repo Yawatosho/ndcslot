@@ -28,6 +28,7 @@ export function createView() {
   };
 
   const PAGE_TRANSITION_MS = 220;
+  const STAMP_POP_AFTER_PAGE_MS = 420; // ここを好みで調整（例：420〜700）
 
   let toastTimer = null;
   let lastRenderedPage = null;
@@ -198,8 +199,11 @@ export function createView() {
       dir = forward ? 1 : -1;
     }
 
-    const popDelayMs = (pageChanged && !prefersReducedMotion()) ? PAGE_TRANSITION_MS : 0;
-
+const popDelayMs =
+  (pageChanged && !prefersReducedMotion())
+    ? (PAGE_TRANSITION_MS + STAMP_POP_AFTER_PAGE_MS)
+    : 0;
+    
     renderGrid({ state, ndc, highlight, popDelayMs });
 
     if (pageChanged && !prefersReducedMotion()) {
