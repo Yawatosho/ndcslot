@@ -1,7 +1,6 @@
 import { initNdc } from "./modules/ndc.js?v=20260116e";
 import { loadState, saveState, createInitialState } from "./modules/state.js?v=20260116e";
 import { createView } from "./modules/view.js?v=20260116e";
-import { createSfx } from "./modules/sfx.js?v=20260116e";
 
 import {
   canSpin,
@@ -22,13 +21,10 @@ const TICKETS_PER_SPIN = 1;
 const PITY_TABLE = [0.00, 0.10, 0.20, 0.35, 0.55, 0.75, 0.90, 1.00];
 
 const NDC_JSON_URL = new URL("../ndc.json", import.meta.url);
-const SFX_JSON_URL = new URL("../sfx.json", import.meta.url);
-
 let ndc = null;
 let state = null;
 
 const view = createView();
-let sfx = null;
 
 let isSpinning = false;
 
@@ -44,19 +40,6 @@ async function boot() {
   view.setSubjectText("NDCデータ読み込み中…");
 
   ndc = await initNdc({ jsonUrl: NDC_JSON_URL });
-
-  // SFX
-  sfx = await createSfx({ manifestUrl: SFX_JSON_URL, defaultEnabled: true, defaultVolume: 0.75 });
-  view.setSfx(sfx);
-
-  // ★ここが肝：ユーザー操作の同期区間で unlock（await しない）
-  const unlockOnce = () => sfx?.unlock?.();
-
-  window.addEventListener("pointerdown", unlockOnce, { once: true });
-  window.addEventListener("click", unlockOnce, { once: true }); // ★追加（環境差対策）
-  window.addEventListener("touchstart", unlockOnce, { once: true });
-  window.addEventListener("mousedown", unlockOnce, { once: true });
-  window.addEventListener("keydown", unlockOnce, { once: true });
 
   state = loadState({ saveKey: SAVE_KEY, startTickets: START_TICKETS });
   saveState({ saveKey: SAVE_KEY }, state);
@@ -101,9 +84,6 @@ async function onSpin() {
   }
 
   // ★開始：unlockは同期（念のため毎回呼んでも軽い）
-  sfx?.unlock?.();
-  sfx?.play?.("spinStart");
-
   consumeSpin({ state, ticketsPerSpin: TICKETS_PER_SPIN });
 
   const pity = shouldTriggerPity({ state, ndc, pityTable: PITY_TABLE });
@@ -111,8 +91,6 @@ async function onSpin() {
 
   // ★内部確定
   const bonusKeys = previewBonusKeys({ state, ndc, result });
-  if (bonusKeys.length) sfx?.play?.("bonus_confirm", { volumeMul: 0.8 });
-
   isSpinning = true;
   rerender();
 
@@ -138,8 +116,6 @@ async function onSpin() {
     breakdown: outcome.breakdown,
   };
 
-  if (!outcome.isNew) sfx?.play?.("dupe");
-
   updateDupeStreak({ state, isNew: outcome.isNew });
 
   state.stats.totalSpins += 1;
@@ -155,13 +131,6 @@ async function onSpin() {
   const subj = ndc.getSubject(result.code) ?? "";
   view.toast(`${pity ? "救済" : "結果"}: ${result.code}${subj ? ` / ${subj}` : ""}`);
 
-  if (bonusKeys.length) {
-    let d = 0;
-    for (const k of bonusKeys) {
-      setTimeout(() => sfx?.play?.(k), 120 + d);
-      d += 120;
-    }
-  }
 }
 
 function rerender(opts = {}) {

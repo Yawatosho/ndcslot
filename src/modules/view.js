@@ -39,10 +39,6 @@ export function createView() {
   // 「ポン開始まで数字表示」用
   let popTimers = [];
 
-  // ★SFX（外から注入）
-  let sfx = null;
-  function setSfx(v) { sfx = v; }
-
   function prefersReducedMotion() {
     return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }
@@ -101,7 +97,6 @@ export function createView() {
     } catch {}
   }
 
-  // ★左→中→右で段階停止（停止音：reelStop0/1/2）
   async function playSpinAnimation({
     ndc,
     finalResult,
@@ -135,17 +130,14 @@ export function createView() {
       if (!stopped0 && elapsed >= stopAt0) {
         stopped0 = true;
         pulseDigit(el.d0);
-        sfx?.play?.("reelStop0");
       }
       if (!stopped1 && elapsed >= stopAt1) {
         stopped1 = true;
         pulseDigit(el.d1);
-        sfx?.play?.("reelStop1");
       }
       if (!stopped2 && elapsed >= stopAt2) {
         stopped2 = true;
         pulseDigit(el.d2);
-        sfx?.play?.("reelStop2");
       }
 
       if (elapsed >= endAt) break;
@@ -324,21 +316,18 @@ export function createView() {
         } else if (filled) {
           const doPop = isHL && Boolean(highlight?.pop) && !prefersReducedMotion();
 
-          // ★ポン演出（スタンプ音は「●が出た瞬間」に鳴らす）
           if (doPop && popDelayMs > 0) {
             cell.innerHTML = `<span class="mini">${code}</span>`;
             cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
 
             const tid = setTimeout(() => {
               cell.innerHTML = `<span class="stamp pop">●</span>`;
-              sfx?.play?.("stamp");
             }, popDelayMs);
 
             popTimers.push(tid);
           } else {
             cell.innerHTML = `<span class="stamp${doPop ? " pop" : ""}">●</span>`;
             cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
-            if (doPop) sfx?.play?.("stamp");
           }
 
         } else {
@@ -388,6 +377,5 @@ export function createView() {
     playSpinAnimation,
     initTabs,
     render,
-    setSfx, // ★追加
   };
 }
