@@ -1,7 +1,7 @@
 // src/modules/sfx.js
 // 効果音の一元管理（差し替えは sfx.json 側）
-// - 相対URLは「sfx.jsonの場所」を基準に解決する（GitHub Pagesで安定）
-// - autoplay制限対策：unlock() をユーザー操作で呼ぶ
+// - 相対URLは sfx.json の場所を基準に解決（res.url）
+// - autoplay制限対策：unlock() を「ユーザー操作の同期区間」で呼ぶ
 // - 失敗してもゲームを止めない（安全に握りつぶす）
 
 const LS_ENABLED_KEY = "ndc_slot_sfx_enabled_v1";
@@ -19,18 +19,16 @@ export async function createSfx({
     enabled,
     volume,
     manifest: {},
+    _manifestUrl: manifestUrl ? String(manifestUrl) : "",
     _audioPool: new Map(), // key -> Audio[]
     _unlocked: false,
-    _manifestBaseUrl: null, // ★sfx.json のURLを保持
 
     async load() {
       if (!manifestUrl) return;
       try {
-        // ★基準URLを確定（文字列/URLどちらでもOK）
-        this._manifestBaseUrl = new URL(String(manifestUrl), location.href);
-
-        const res = await fetch(this._manifestBaseUrl, { cache: "no-store" });
+        const res = await fetch(manifestUrl, { cache: "no-store" });
         if (!res.ok) return;
+        this._manifestUrl = res.url || this._manifestUrl;
         const json = await res.json();
         if (json && typeof json === "object") this.manifest = json;
       } catch {
@@ -38,18 +36,26 @@ export async function createSfx({
       }
     },
 
-    // ユーザー操作時に呼ぶ（最初のクリックなど）
-    async unlock() {
+    // ★重要：ユーザー操作の「同期区間」で呼ぶこと
+    // await を使わず、play を投げっぱなしにする（ここが一番安定）
+    unlock() {
       if (this._unlocked) return;
       this._unlocked = true;
 
       try {
         const url = this._resolve("spinStart");
         if (!url) return;
+
         const a = new Audio(url);
+        a.preload = "auto";
         a.volume = 0;
-        await a.play().catch(() => {});
+
+        const p = a.play();
+        // promise は待たない（待つと gesture 文脈を失うブラウザがある）
+        if (p && typeof p.catch === "function") p.catch(() => {});
+        // すぐ止める（無音の解錠）
         a.pause();
+        a.currentTime = 0;
       } catch {
         // no-op
       }
@@ -77,7 +83,9 @@ export async function createSfx({
         const a = this._acquire(key, url);
         a.currentTime = 0;
         a.volume = vol;
-        a.play().catch(() => {});
+
+        const p = a.play();
+        if (p && typeof p.catch === "function") p.catch(() => {});
       } catch {
         // no-op
       }
@@ -86,10 +94,8 @@ export async function createSfx({
     _resolve(key) {
       const raw = this.manifest?.[key];
       if (!raw) return null;
-
-      // ★相対パスは「sfx.jsonの場所」を基準に解決する
       try {
-        const base = this._manifestBaseUrl ?? new URL(location.href);
+        const base = this._manifestUrl || document.baseURI;
         return new URL(String(raw), base).toString();
       } catch {
         return null;
@@ -106,6 +112,7 @@ export async function createSfx({
       }
       if (arr.length < poolSize) {
         const a = new Audio(url);
+        a.preload = "auto";
         arr.push(a);
         return a;
       }
