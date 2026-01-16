@@ -1,5 +1,5 @@
 // src/modules/view.js
-// 画面描画（タブ／グリッド／進捗／スロット表示／トースト）＋ スロット簡易演出 ＋ ふわっとページ切替 ＋ 新規スタンプPop
+// 画面描画（タブ／グリッド／進捗／スロット表示／トースト）＋ スロット演出 ＋ ページ切替 ＋ 新規スタンプPop
 
 export function createView() {
   const el = {
@@ -27,13 +27,18 @@ export function createView() {
   };
 
   const PAGE_TRANSITION_MS = 220;
-  const STAMP_POP_AFTER_PAGE_MS = 220; // 追加の余韻（あなたの設定）
+  const STAMP_POP_AFTER_PAGE_MS = 220;
+
   let toastTimer = null;
   let lastRenderedPage = null;
   let pageAnim = null;
 
-  // 「ポン開始まで数字表示」用のタイマー管理
+  // 「ポン開始まで数字表示」用
   let popTimers = [];
+
+  // ★SFX（外から注入）
+  let sfx = null;
+  function setSfx(v) { sfx = v; }
 
   function prefersReducedMotion() {
     return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -78,7 +83,6 @@ export function createView() {
     if (el.lastSubject) el.lastSubject.textContent = subj ? subj : "（分類なし）";
   }
 
-  // ★止まった桁だけ一瞬スケール（ぷるん）
   function pulseDigit(node) {
     if (!node) return;
     if (prefersReducedMotion()) return;
@@ -94,7 +98,7 @@ export function createView() {
     } catch {}
   }
 
-  // ★左→中→右で段階停止 + 各停止で pulse
+  // ★左→中→右で段階停止（停止音：reelStop0/1/2）
   async function playSpinAnimation({
     ndc,
     finalResult,
@@ -125,9 +129,21 @@ export function createView() {
     while (true) {
       const elapsed = performance.now() - start;
 
-      if (!stopped0 && elapsed >= stopAt0) { stopped0 = true; pulseDigit(el.d0); }
-      if (!stopped1 && elapsed >= stopAt1) { stopped1 = true; pulseDigit(el.d1); }
-      if (!stopped2 && elapsed >= stopAt2) { stopped2 = true; pulseDigit(el.d2); }
+      if (!stopped0 && elapsed >= stopAt0) {
+        stopped0 = true;
+        pulseDigit(el.d0);
+        sfx?.play?.("reelStop0");
+      }
+      if (!stopped1 && elapsed >= stopAt1) {
+        stopped1 = true;
+        pulseDigit(el.d1);
+        sfx?.play?.("reelStop1");
+      }
+      if (!stopped2 && elapsed >= stopAt2) {
+        stopped2 = true;
+        pulseDigit(el.d2);
+        sfx?.play?.("reelStop2");
+      }
 
       if (elapsed >= endAt) break;
 
@@ -237,7 +253,6 @@ export function createView() {
     const page = state.currentPage;
     el.grid.innerHTML = "";
 
-    // 前回レンダーの「後から●に差し替え」タイマーを掃除
     for (const id of popTimers) clearTimeout(id);
     popTimers = [];
 
@@ -273,25 +288,24 @@ export function createView() {
         } else if (filled) {
           const doPop = isHL && Boolean(highlight?.pop) && !prefersReducedMotion();
 
-          // ポン演出かつ遅延あり：遅延中は3桁→時間が来たら●＋ポン
+          // ★ポン演出（スタンプ音は「●が出た瞬間」に鳴らす）
           if (doPop && popDelayMs > 0) {
             cell.innerHTML = `<span class="mini">${code}</span>`;
             cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
 
             const tid = setTimeout(() => {
               cell.innerHTML = `<span class="stamp pop">●</span>`;
-              // title は cell に保持されているので再設定不要
+              sfx?.play?.("stamp");
             }, popDelayMs);
 
             popTimers.push(tid);
           } else {
-            // 遅延なし（またはポンなし）は従来どおり
             cell.innerHTML = `<span class="stamp${doPop ? " pop" : ""}">●</span>`;
             cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
+            if (doPop) sfx?.play?.("stamp");
           }
 
         } else {
-          // 未取得マスは3桁（XYZ）表示
           cell.innerHTML = `<span class="mini">${code}</span>`;
           cell.title = `${code}${subj ? ` / ${subj}` : ""}`;
         }
@@ -324,13 +338,8 @@ export function createView() {
     return div;
   }
 
-  function sleep(ms) {
-    return new Promise((r) => setTimeout(r, ms));
-  }
-
-  function randInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
+  function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+  function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
   return {
     el,
@@ -343,5 +352,6 @@ export function createView() {
     playSpinAnimation,
     initTabs,
     render,
+    setSfx, // ★追加
   };
 }
