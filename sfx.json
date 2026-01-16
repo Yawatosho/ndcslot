@@ -1,0 +1,18 @@
+{
+  "spinStart": "./assets/sfx/spinStart.mp3",
+  "reelStop0": "./assets/sfx/reelStop0.mp3",
+  "reelStop1": "./assets/sfx/reelStop1.mp3",
+  "reelStop2": "./assets/sfx/reelStop2.mp3",
+
+  "stamp": "./assets/sfx/stamp.mp3",
+  "dupe": "./assets/sfx/dupe.mp3",
+
+  "bonus_confirm": "./assets/sfx/bonus_confirm.mp3",
+
+  "bonus_triple": "./assets/sfx/bonus_triple.mp3",
+  "bonus_straight": "./assets/sfx/bonus_straight.mp3",
+  "bonus_sandwich": "./assets/sfx/bonus_sandwich.mp3",
+  "bonus_n00": "./assets/sfx/bonus_n00.mp3",
+  "bonus_row": "./assets/sfx/bonus_row.mp3",
+  "bonus_page": "./assets/sfx/bonus_page.mp3"
+}
