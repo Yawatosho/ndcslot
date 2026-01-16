@@ -18,6 +18,7 @@ export async function createSfx({
     enabled,
     volume,
     manifest: {},
+    _manifestUrl: manifestUrl ? String(manifestUrl) : "",
     _audioPool: new Map(), // key -> Audio[]
     _unlocked: false,
 
@@ -26,6 +27,7 @@ export async function createSfx({
       try {
         const res = await fetch(manifestUrl, { cache: "no-store" });
         if (!res.ok) return;
+        this._manifestUrl = res.url || this._manifestUrl;
         const json = await res.json();
         if (json && typeof json === "object") this.manifest = json;
       } catch {
@@ -84,8 +86,13 @@ export async function createSfx({
     _resolve(key) {
       const raw = this.manifest?.[key];
       if (!raw) return null;
-      // キャッシュ対策したい場合は json 側で ?v= を付けてもOK
-      return String(raw);
+      try {
+        // キャッシュ対策したい場合は json 側で ?v= を付けてもOK
+        const base = this._manifestUrl || document.baseURI;
+        return new URL(String(raw), base).toString();
+      } catch {
+        return String(raw);
+      }
     },
 
     _acquire(key, url) {
