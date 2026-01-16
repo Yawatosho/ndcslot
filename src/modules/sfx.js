@@ -1,5 +1,6 @@
 // src/modules/sfx.js
 // 効果音の一元管理（差し替えは sfx.json 側）
+// - 相対URLは「sfx.jsonの場所」を基準に解決する（GitHub Pagesで安定）
 // - autoplay制限対策：unlock() をユーザー操作で呼ぶ
 // - 失敗してもゲームを止めない（安全に握りつぶす）
 
@@ -18,16 +19,18 @@ export async function createSfx({
     enabled,
     volume,
     manifest: {},
-    _manifestUrl: manifestUrl ? String(manifestUrl) : "",
     _audioPool: new Map(), // key -> Audio[]
     _unlocked: false,
+    _manifestBaseUrl: null, // ★sfx.json のURLを保持
 
     async load() {
       if (!manifestUrl) return;
       try {
-        const res = await fetch(manifestUrl, { cache: "no-store" });
+        // ★基準URLを確定（文字列/URLどちらでもOK）
+        this._manifestBaseUrl = new URL(String(manifestUrl), location.href);
+
+        const res = await fetch(this._manifestBaseUrl, { cache: "no-store" });
         if (!res.ok) return;
-        this._manifestUrl = res.url || this._manifestUrl;
         const json = await res.json();
         if (json && typeof json === "object") this.manifest = json;
       } catch {
@@ -40,7 +43,6 @@ export async function createSfx({
       if (this._unlocked) return;
       this._unlocked = true;
 
-      // iOS/Safari等：一度再生できる状態にする（無音の短い play/pause）
       try {
         const url = this._resolve("spinStart");
         if (!url) return;
@@ -63,7 +65,6 @@ export async function createSfx({
       localStorage.setItem(LS_VOLUME_KEY, String(this.volume));
     },
 
-    // 代表キーが無い場合は鳴らさない（静かにスルー）
     play(key, opts = {}) {
       if (!this.enabled) return;
       const url = this._resolve(key);
@@ -73,7 +74,6 @@ export async function createSfx({
       const vol = clamp01(this.volume * volMul);
 
       try {
-        // 同時多発に備えて pool から使い回す
         const a = this._acquire(key, url);
         a.currentTime = 0;
         a.volume = vol;
@@ -86,12 +86,13 @@ export async function createSfx({
     _resolve(key) {
       const raw = this.manifest?.[key];
       if (!raw) return null;
+
+      // ★相対パスは「sfx.jsonの場所」を基準に解決する
       try {
-        // キャッシュ対策したい場合は json 側で ?v= を付けてもOK
-        const base = this._manifestUrl || document.baseURI;
+        const base = this._manifestBaseUrl ?? new URL(location.href);
         return new URL(String(raw), base).toString();
       } catch {
-        return String(raw);
+        return null;
       }
     },
 
@@ -100,17 +101,14 @@ export async function createSfx({
       if (!this._audioPool.has(key)) this._audioPool.set(key, []);
       const arr = this._audioPool.get(key);
 
-      // 再生中でないものを優先
       for (const a of arr) {
         if (a.paused || a.ended) return a;
       }
-      // 無ければ追加
       if (arr.length < poolSize) {
         const a = new Audio(url);
         arr.push(a);
         return a;
       }
-      // 最後のものを強制再利用
       return arr[arr.length - 1];
     },
   };
