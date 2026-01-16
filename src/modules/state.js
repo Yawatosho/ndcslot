@@ -8,30 +8,36 @@
  * @property {number} currentPage
  * @property {boolean[][][]} stamps
  * @property {boolean[]} pageRewarded
+ * @property {boolean[][]} rowRewarded
  * @property {string=} lastResultCode
  * @property {{totalSpins:number,totalNew:number,totalDupe:number}} stats
  */
 
-export function createInitialState({ startTickets = 300 } = {}) {
+export function createInitialState({ startTickets = 30 } = {}) {
   const stamps = Array.from({ length: 10 }, () =>
     Array.from({ length: 10 }, () =>
       Array.from({ length: 10 }, () => false)
     )
   );
 
+  const rowRewarded = Array.from({ length: 10 }, () =>
+    Array.from({ length: 10 }, () => false)
+  );
+
   return {
-    schemaVersion: 2,
-    bookmarkTickets: Math.max(0, Math.trunc(Number(startTickets ?? 300))),
+    schemaVersion: 3,
+    bookmarkTickets: Math.max(0, Math.trunc(Number(startTickets ?? 30))),
     dupeStreak: 0,
     currentPage: 0,
     stamps,
     pageRewarded: Array.from({ length: 10 }, () => false),
+    rowRewarded,
     lastResultCode: "000",
     stats: { totalSpins: 0, totalNew: 0, totalDupe: 0 },
   };
 }
 
-export function loadState({ saveKey, startTickets = 300 }) {
+export function loadState({ saveKey, startTickets = 30 }) {
   const base = createInitialState({ startTickets });
 
   try {
@@ -53,6 +59,13 @@ export function loadState({ saveKey, startTickets = 300 }) {
     if (!Array.isArray(merged.pageRewarded) || merged.pageRewarded.length !== 10) {
       merged.pageRewarded = Array.from({ length: 10 }, () => false);
     }
+
+    if (!isRowRewardedShapeOk(merged.rowRewarded)) {
+      merged.rowRewarded = Array.from({ length: 10 }, () =>
+        Array.from({ length: 10 }, () => false)
+      );
+    }
+
     if (!merged.stats || typeof merged.stats !== "object") {
       merged.stats = { totalSpins: 0, totalNew: 0, totalDupe: 0 };
     } else {
@@ -61,12 +74,19 @@ export function loadState({ saveKey, startTickets = 300 }) {
       merged.stats.totalDupe = Number(merged.stats.totalDupe ?? 0);
     }
 
-    // 旧セーブ（schemaVersionが無い/古い）への軽い移行
+    // 旧セーブへの軽い移行
     const v = Number(merged.schemaVersion ?? 1);
-    if (!Number.isFinite(v) || v < 2) {
-      merged.schemaVersion = 2;
-      // 無料スピン制から「しおり券のみ」へ切替：最低所持を付与（既に多いなら維持）
-      merged.bookmarkTickets = Math.max(merged.bookmarkTickets, Math.max(0, Math.trunc(Number(startTickets ?? 300))));
+    if (!Number.isFinite(v) || v < 3) {
+      merged.schemaVersion = 3;
+
+      // rowRewarded が無い旧データを救済
+      if (!isRowRewardedShapeOk(merged.rowRewarded)) {
+        merged.rowRewarded = Array.from({ length: 10 }, () =>
+          Array.from({ length: 10 }, () => false)
+        );
+      }
+
+      // ここでは所持しおり券を強制的に変更しない（既存プレイは尊重）
       if (!merged.lastResultCode || !/^[0-9]{3}$/.test(merged.lastResultCode)) merged.lastResultCode = "000";
     }
 
@@ -93,6 +113,14 @@ function isStampsShapeOk(stamps) {
     for (let r = 0; r < 10; r++) {
       if (!Array.isArray(stamps[p][r]) || stamps[p][r].length !== 10) return false;
     }
+  }
+  return true;
+}
+
+function isRowRewardedShapeOk(rr) {
+  if (!Array.isArray(rr) || rr.length !== 10) return false;
+  for (let p = 0; p < 10; p++) {
+    if (!Array.isArray(rr[p]) || rr[p].length !== 10) return false;
   }
   return true;
 }
