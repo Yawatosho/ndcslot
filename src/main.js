@@ -6,8 +6,8 @@
    - gameCore.js（中核ロジック）✅
 */
 
-import { initNdc } from "./modules/ndc.js?v=20260116a";
-import { loadState, saveState, createInitialState } from "./modules/state.js?v=20260116a";
+import { initNdc } from "./modules/ndc.js?v=20260116b";
+import { loadState, saveState, createInitialState } from "./modules/state.js?v=20260116b";
 import { createView } from "./modules/view.js?v=20260116a";
 import {
   canSpin,
@@ -17,24 +17,29 @@ import {
   rollNewGuaranteed,
   applyStampAndRewards,
   updateDupeStreak,
-} from "./modules/gameCore.js?v=20260116a";
+} from "./modules/gameCore.js?v=20260116b";
 
-const SAVE_KEY = "ndc_slot_save_v1";
-const START_TICKETS = 300;
+// 保存キーは破壊的変更（state構造追加）につき v2
+const SAVE_KEY = "ndc_slot_save_v2";
+
+// 初期枚数
+const START_TICKETS = 30;
 const TICKETS_PER_SPIN = 1;
 
 // 報酬（しおり券）
-const REWARD_NEW = 8;
-const REWARD_DUPE = 1;
-const REWARD_PAGE_COMPLETE = 50;
+const REWARD_NEW = 0;
+const REWARD_DUPE = 0;
 
-// ボーナス
-const BONUS_TRIPLE = 1000; // ゾロ目
-const BONUS_STRAIGHT = 300; // 連番
-// 追加の“ほどよい”おまけ（不要なら 0 にしてOK）
-const BONUS_SANDWICH = 120; // 121 / 707 など
-const BONUS_PAIR = 60;      // 112 / 455 など
-const BONUS_LUCKY7 = 70;    // 7が入っていたら
+// コンプ報酬
+const REWARD_ROW_COMPLETE = 30;   // 1行コンプ
+const REWARD_PAGE_COMPLETE = 100; // 1ページコンプ
+
+// ボーナス（しおり券）
+const BONUS_TRIPLE = 100;   // ゾロ目
+const BONUS_STRAIGHT = 30;  // 3桁連番（昇順のみ）
+const BONUS_PAIR = 3;       // ペア（AAB/ABB）
+const BONUS_SANDWICH = 5;   // サンドイッチ（ABA）
+const BONUS_LUCKY7 = 0;     // なし
 
 // 後半加速ピティ（index = dupeStreak）
 const PITY_TABLE = [0.00, 0.10, 0.20, 0.35, 0.55, 0.75, 0.90, 1.00];
@@ -118,7 +123,7 @@ async function onSpin() {
   await view.playSpinAnimation({
     ndc,
     finalResult: result,
-    durationMs: 420, // ここを 300〜500 の好みで調整OK
+    durationMs: 420,
     tickMs: 55,
   });
 
@@ -136,6 +141,7 @@ async function onSpin() {
     rewards: {
       new: REWARD_NEW,
       dupe: REWARD_DUPE,
+      rowComplete: REWARD_ROW_COMPLETE,
       pageComplete: REWARD_PAGE_COMPLETE,
       triple: BONUS_TRIPLE,
       straight: BONUS_STRAIGHT,
@@ -159,7 +165,7 @@ async function onSpin() {
   const subj = ndc.getSubject(result.code) ?? "";
   view.toast(`${pity ? "救済" : "結果"}: ${result.code}${subj ? ` / ${subj}` : ""}`);
 
-  // 獲得内訳（トーストはキューで順番に出る）
+  // 獲得内訳（0は表示しない）
   for (const b of outcome.breakdown) {
     view.toast(b.label);
   }
