@@ -51,7 +51,9 @@ async function boot() {
 
   // ★ここが肝：ユーザー操作の同期区間で unlock（await しない）
   const unlockOnce = () => sfx?.unlock?.();
+
   window.addEventListener("pointerdown", unlockOnce, { once: true });
+  window.addEventListener("click", unlockOnce, { once: true }); // ★追加（環境差対策）
   window.addEventListener("touchstart", unlockOnce, { once: true });
   window.addEventListener("mousedown", unlockOnce, { once: true });
   window.addEventListener("keydown", unlockOnce, { once: true });
