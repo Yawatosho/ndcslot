@@ -1,7 +1,7 @@
-import { initNdc } from "./modules/ndc.js?v=20260116c";
-import { loadState, saveState, createInitialState } from "./modules/state.js?v=20260116c";
-import { createView } from "./modules/view.js?v=20260116c";
-import { createSfx } from "./modules/sfx.js?v=20260116c";
+import { initNdc } from "./modules/ndc.js?v=20260116d";
+import { loadState, saveState, createInitialState } from "./modules/state.js?v=20260116d";
+import { createView } from "./modules/view.js?v=20260116d";
+import { createSfx } from "./modules/sfx.js?v=20260116d";
 
 import {
   canSpin,
@@ -12,7 +12,7 @@ import {
   applyStampAndRewards,
   updateDupeStreak,
   previewBonusKeys, // ★追加（内部確定）
-} from "./modules/gameCore.js?v=20260116c";
+} from "./modules/gameCore.js?v=20260116d";
 
 const SAVE_KEY = "ndc_slot_save_v2";
 
@@ -134,6 +134,12 @@ async function onSpin() {
     result,
     // ※あなたの報酬設定をここに（省略可：gameCore側デフォルトでもOK）
   });
+
+  state.lastOutcome = {
+    isNew: outcome.isNew,
+    ticketDelta: outcome.ticketDelta,
+    breakdown: outcome.breakdown,
+  };
 
   // ★ダブり時
   if (!outcome.isNew) sfx?.play?.("dupe");

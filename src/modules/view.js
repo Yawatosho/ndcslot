@@ -12,6 +12,9 @@ export function createView() {
     d2: document.getElementById("d2"),
     lastCode: document.getElementById("lastCode"),
     lastSubject: document.getElementById("lastSubject"),
+    lastOutcomeLabel: document.getElementById("lastOutcomeLabel"),
+    lastOutcomeDelta: document.getElementById("lastOutcomeDelta"),
+    lastOutcomeList: document.getElementById("lastOutcomeList"),
 
     spinBtn: document.getElementById("spinBtn"),
     resetBtn: document.getElementById("resetBtn"),
@@ -196,6 +199,8 @@ export function createView() {
 
     updateTabsActive(state.currentPage);
 
+    renderLastOutcome(state.lastOutcome);
+
     const pageChanged = (lastRenderedPage !== null && lastRenderedPage !== state.currentPage);
 
     let dir = 1;
@@ -221,6 +226,37 @@ export function createView() {
     }
 
     lastRenderedPage = state.currentPage;
+  }
+
+  function renderLastOutcome(outcome) {
+    if (!el.lastOutcomeLabel || !el.lastOutcomeDelta || !el.lastOutcomeList) return;
+
+    const isNew = outcome?.isNew;
+    el.lastOutcomeLabel.textContent = (isNew === true)
+      ? "新規スタンプ"
+      : (isNew === false)
+        ? "ダブり"
+        : "-";
+
+    const delta = Number(outcome?.ticketDelta ?? 0);
+    const sign = delta > 0 ? "+" : "";
+    el.lastOutcomeDelta.textContent = `${sign}${delta}`;
+    el.lastOutcomeDelta.dataset.negative = String(delta < 0);
+
+    el.lastOutcomeList.innerHTML = "";
+    const breakdown = Array.isArray(outcome?.breakdown) ? outcome.breakdown : [];
+    if (!breakdown.length) {
+      const li = document.createElement("li");
+      li.textContent = "ボーナスなし";
+      el.lastOutcomeList.appendChild(li);
+      return;
+    }
+
+    for (const item of breakdown) {
+      const li = document.createElement("li");
+      li.textContent = item.label ?? String(item);
+      el.lastOutcomeList.appendChild(li);
+    }
   }
 
   function animateGridIn(dir) {
