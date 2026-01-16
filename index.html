@@ -178,6 +178,52 @@
       text-overflow: ellipsis;
     }
 
+    .reward{
+      margin-top: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(10, 16, 28, 0.55);
+      padding: 10px 12px;
+      display: grid;
+      gap: 8px;
+    }
+    .reward-title{
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .reward-head{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-weight: 800;
+      letter-spacing: .02em;
+    }
+    .reward-delta{
+      color: var(--good);
+      background: rgba(124, 255, 178, 0.12);
+      border: 1px solid rgba(124, 255, 178, 0.35);
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .reward-delta[data-negative="true"]{
+      color: var(--bad);
+      background: rgba(255, 122, 122, 0.15);
+      border-color: rgba(255, 122, 122, 0.35);
+    }
+    .reward-list{
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
     .btns{
       margin-top: 14px;
       display:grid;
@@ -697,6 +743,15 @@ button:focus-visible, .tab:focus-visible{
             <div>分類</div>
             <div class="subject-badge" id="lastSubject">（読み込み中）</div>
           </div>
+
+          <div class="reward" aria-live="polite">
+            <div class="reward-title">今回の結果</div>
+            <div class="reward-head">
+              <div id="lastOutcomeLabel">-</div>
+              <div class="reward-delta" id="lastOutcomeDelta">+0</div>
+            </div>
+            <ul class="reward-list" id="lastOutcomeList"></ul>
+          </div>
         </div>
 
         <div class="btns">
@@ -742,6 +797,6 @@ button:focus-visible, .tab:focus-visible{
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script type="module" src="./src/main.js?v=20260116a"></script>
+  <script type="module" src="./src/main.js?v=20260116d"></script>
 </body>
 </html>
