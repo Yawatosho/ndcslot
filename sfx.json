@@ -1,8 +1,8 @@
 {
-  "spinStart": "./assets/sfx/spinStart.mp3",
-  "reelStop0": "./assets/sfx/reelStop0.mp3",
-  "reelStop1": "./assets/sfx/reelStop1.mp3",
-  "reelStop2": "./assets/sfx/reelStop2.mp3",
+  "spinStart": "spinStart.mp3",
+  "reelStop0": "reelStop.mp3",
+  "reelStop1": "reelStop.mp3",
+  "reelStop2": "reelStop.mp3",
 
   "stamp": "./assets/sfx/stamp.mp3",
   "dupe": "./assets/sfx/dupe.mp3",
