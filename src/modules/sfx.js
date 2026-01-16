@@ -27,6 +27,7 @@ export async function createSfx({
       try {
         const res = await fetch(manifestUrl, { cache: "no-store" });
         if (!res.ok) return;
+        this._manifestUrl = res.url || this._manifestUrl;
         const json = await res.json();
         if (json && typeof json === "object") this.manifest = json;
       } catch {

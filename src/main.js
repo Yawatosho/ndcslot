@@ -51,7 +51,11 @@ async function boot() {
   view.setSfx(sfx);
 
   // ユーザー操作でunlock（autoplay対策）
-  window.addEventListener("pointerdown", () => sfx.unlock(), { once: true });
+  const unlockOnce = () => sfx.unlock();
+  window.addEventListener("pointerdown", unlockOnce, { once: true });
+  window.addEventListener("touchstart", unlockOnce, { once: true });
+  window.addEventListener("mousedown", unlockOnce, { once: true });
+  window.addEventListener("keydown", unlockOnce, { once: true });
 
   state = loadState({ saveKey: SAVE_KEY, startTickets: START_TICKETS });
   saveState({ saveKey: SAVE_KEY }, state);
@@ -96,6 +100,7 @@ async function onSpin() {
   }
 
   // ★開始ボタン時
+  await sfx?.unlock?.();
   sfx?.play?.("spinStart");
 
   consumeSpin({ state, ticketsPerSpin: TICKETS_PER_SPIN });
