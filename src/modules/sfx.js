@@ -1,8 +1,8 @@
 // src/modules/sfx.js
-// 効果音の一元管理（差し替えは sfx.json 側）
-// - 相対URLは sfx.json の場所を基準に解決（res.url）
-// - autoplay制限対策：unlock() を「ユーザー操作の同期区間」で呼ぶ
-// - play失敗は console に出す（原因特定用）
+// WebAudio版（安定）: sfx.jsonで管理、相対パスはmanifest基準で解決
+// - unlock(): AudioContextをresume（ユーザー操作内で呼ぶ）
+// - play(): AudioBufferを鳴らす（HTMLAudioより安定）
+// - 失敗してもゲームは止めない（console.warnのみ）
 
 const LS_ENABLED_KEY = "ndc_slot_sfx_enabled_v1";
 const LS_VOLUME_KEY = "ndc_slot_sfx_volume_v1";
@@ -19,16 +19,24 @@ export async function createSfx({
     enabled,
     volume,
     manifest: {},
-    _manifestUrl: manifestUrl ? String(manifestUrl) : "",
-    _audioPool: new Map(),
+    _manifestBaseUrl: null,
+
+    // WebAudio
+    _ctx: null,
+    _buffers: new Map(), // key -> AudioBuffer
+    _loading: new Map(), // key -> Promise<AudioBuffer>
     _unlocked: false,
 
     async load() {
       if (!manifestUrl) return;
+
       try {
         const res = await fetch(manifestUrl, { cache: "no-store" });
-        if (!res.ok) return;
-        this._manifestUrl = res.url || this._manifestUrl;
+        if (!res.ok) {
+          console.warn("[sfx] manifest fetch failed", res.status);
+          return;
+        }
+        this._manifestBaseUrl = new URL(res.url, location.href);
         const json = await res.json();
         if (json && typeof json === "object") this.manifest = json;
       } catch (e) {
@@ -36,39 +44,26 @@ export async function createSfx({
       }
     },
 
-    // ★unlockは「成功したら」unlockedにする（拒否されたのにtrueにしない）
+    // ★ユーザー操作内で呼ぶ（pointerdown/click等）
     unlock() {
-      if (this._unlocked) return;
-
-      const url = this._resolve("spinStart");
-      if (!url) {
-        console.warn("[sfx] unlock skipped: spinStart not found in manifest");
-        return;
-      }
-
       try {
-        const a = new Audio(url);
-        a.preload = "auto";
-        a.muted = true;     // ★ミュートで解錠（iOS系で安定）
-        a.volume = 0;
-
-        const p = a.play();
+        if (!this._ctx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) {
+            console.warn("[sfx] AudioContext not supported");
+            return;
+          }
+          this._ctx = new AC();
+        }
+        // resumeはPromiseだが「待たない」方がgesture文脈が切れにくい
+        const p = this._ctx.resume();
         if (p && typeof p.then === "function") {
-          p.then(() => {
-            // 再生できた＝解錠成功
-            this._unlocked = true;
-            a.pause();
-            a.currentTime = 0;
-          }).catch((err) => {
-            console.warn("[sfx] unlock play blocked", err);
-            // blockedならunlockedのままにしない（次のジェスチャで再挑戦できる）
+          p.then(() => { this._unlocked = true; }).catch((e) => {
+            console.warn("[sfx] resume blocked", e);
             this._unlocked = false;
           });
         } else {
-          // 古い環境向け：ここまで来たら成功扱い
           this._unlocked = true;
-          a.pause();
-          a.currentTime = 0;
         }
       } catch (e) {
         console.warn("[sfx] unlock error", e);
@@ -86,59 +81,87 @@ export async function createSfx({
       localStorage.setItem(LS_VOLUME_KEY, String(this.volume));
     },
 
+    async prime(keys = []) {
+      // 先読み（任意）
+      await Promise.all(keys.map((k) => this._ensureBuffer(k)));
+    },
+
     play(key, opts = {}) {
       if (!this.enabled) return;
-
-      const url = this._resolve(key);
-      if (!url) {
-        console.warn("[sfx] missing key:", key);
-        return;
-      }
+      if (!this._ctx) return; // unlock前
+      if (this._ctx.state !== "running") return; // resume前（無音のままにする）
 
       const volMul = clamp01(Number(opts.volumeMul ?? 1));
       const vol = clamp01(this.volume * volMul);
 
-      try {
-        const a = this._acquire(key, url);
-        a.muted = false;
-        a.currentTime = 0;
-        a.volume = vol;
+      this._ensureBuffer(key).then((buf) => {
+        if (!buf) return;
 
-        const p = a.play();
-        if (p && typeof p.catch === "function") {
-          p.catch((err) => console.warn("[sfx] play blocked:", key, err));
+        try {
+          const src = this._ctx.createBufferSource();
+          src.buffer = buf;
+
+          const gain = this._ctx.createGain();
+          gain.gain.value = vol;
+
+          src.connect(gain);
+          gain.connect(this._ctx.destination);
+
+          src.start(0);
+        } catch (e) {
+          console.warn("[sfx] play error", key, e);
         }
-      } catch (e) {
-        console.warn("[sfx] play error:", key, e);
-      }
+      });
     },
 
-    _resolve(key) {
+    _resolveUrl(key) {
       const raw = this.manifest?.[key];
       if (!raw) return null;
       try {
-        const base = this._manifestUrl || document.baseURI;
+        const base = this._manifestBaseUrl ?? new URL(location.href);
         return new URL(String(raw), base).toString();
       } catch {
         return null;
       }
     },
 
-    _acquire(key, url) {
-      const poolSize = 4;
-      if (!this._audioPool.has(key)) this._audioPool.set(key, []);
-      const arr = this._audioPool.get(key);
+    async _ensureBuffer(key) {
+      if (this._buffers.has(key)) return this._buffers.get(key);
+      if (this._loading.has(key)) return this._loading.get(key);
 
-      for (const a of arr) {
-        if (a.paused || a.ended) return a;
+      const url = this._resolveUrl(key);
+      if (!url) {
+        console.warn("[sfx] missing key in manifest:", key);
+        return null;
       }
-      if (arr.length < poolSize) {
-        const a = new Audio(url);
-        a.preload = "auto";
-        arr.push(a);
-        return a;
+      if (!this._ctx) {
+        // unlock前にprimeされた場合でも、ctxが無いとdecodeできないので作る
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        this._ctx = new AC();
       }
-      return arr[arr.length - 1];
+
+      const task = (async () => {
+        try {
+          const res = await fetch(url, { cache: "force-cache" });
+          if (!res.ok) {
+            console.warn("[sfx] audio fetch failed", key, res.status);
+            return null;
+          }
+          const ab = await res.arrayBuffer();
+          const buf = await this._ctx.decodeAudioData(ab);
+          this._buffers.set(key, buf);
+          return buf;
+        } catch (e) {
+          console.warn("[sfx] decode failed", key, e);
+          return null;
+        } finally {
+          this._loading.delete(key);
+        }
+      })();
+
+      this._loading.set(key, task);
+      return task;
     },
   };
 
