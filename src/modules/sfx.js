@@ -1,8 +1,7 @@
 // src/modules/sfx.js
 // WebAudio版（安定）: sfx.jsonで管理、相対パスはmanifest基準で解決
-// - unlock(): AudioContextをresume（ユーザー操作内で呼ぶ）
-// - play(): AudioBufferを鳴らす（HTMLAudioより安定）
-// - 失敗してもゲームは止めない（console.warnのみ）
+// - unlock(): AudioContextを作ってresume（ユーザー操作内で呼ぶ）
+// - play(): resume完了を待ってから再生（クリック直後の1発目が無音になる問題を潰す）
 
 const LS_ENABLED_KEY = "ndc_slot_sfx_enabled_v1";
 const LS_VOLUME_KEY = "ndc_slot_sfx_volume_v1";
@@ -21,11 +20,10 @@ export async function createSfx({
     manifest: {},
     _manifestBaseUrl: null,
 
-    // WebAudio
     _ctx: null,
-    _buffers: new Map(), // key -> AudioBuffer
-    _loading: new Map(), // key -> Promise<AudioBuffer>
-    _unlocked: false,
+    _resumePromise: null,
+    _buffers: new Map(),   // key -> AudioBuffer
+    _loading: new Map(),   // key -> Promise<AudioBuffer>
 
     async load() {
       if (!manifestUrl) return;
@@ -44,31 +42,10 @@ export async function createSfx({
       }
     },
 
-    // ★ユーザー操作内で呼ぶ（pointerdown/click等）
+    // ユーザー操作の同期区間で呼ぶ（pointerdown/click等）
     unlock() {
-      try {
-        if (!this._ctx) {
-          const AC = window.AudioContext || window.webkitAudioContext;
-          if (!AC) {
-            console.warn("[sfx] AudioContext not supported");
-            return;
-          }
-          this._ctx = new AC();
-        }
-        // resumeはPromiseだが「待たない」方がgesture文脈が切れにくい
-        const p = this._ctx.resume();
-        if (p && typeof p.then === "function") {
-          p.then(() => { this._unlocked = true; }).catch((e) => {
-            console.warn("[sfx] resume blocked", e);
-            this._unlocked = false;
-          });
-        } else {
-          this._unlocked = true;
-        }
-      } catch (e) {
-        console.warn("[sfx] unlock error", e);
-        this._unlocked = false;
-      }
+      this._ensureContext();
+      this._resume(); // waitしない
     },
 
     setEnabled(v) {
@@ -81,37 +58,76 @@ export async function createSfx({
       localStorage.setItem(LS_VOLUME_KEY, String(this.volume));
     },
 
+    // 先読み（任意）
     async prime(keys = []) {
-      // 先読み（任意）
+      this._ensureContext();
+      await this._resume();
       await Promise.all(keys.map((k) => this._ensureBuffer(k)));
     },
 
+    // ★重要：runningを待ってから鳴らす
     play(key, opts = {}) {
       if (!this.enabled) return;
-      if (!this._ctx) return; // unlock前
-      if (this._ctx.state !== "running") return; // resume前（無音のままにする）
+
+      this._ensureContext();
 
       const volMul = clamp01(Number(opts.volumeMul ?? 1));
       const vol = clamp01(this.volume * volMul);
 
-      this._ensureBuffer(key).then((buf) => {
-        if (!buf) return;
+      // resume完了→buffer準備→再生 の順で必ずつなぐ
+      Promise.resolve(this._resume())
+        .then(() => this._ensureBuffer(key))
+        .then((buf) => {
+          if (!buf) return;
+          try {
+            const src = this._ctx.createBufferSource();
+            src.buffer = buf;
 
-        try {
-          const src = this._ctx.createBufferSource();
-          src.buffer = buf;
+            const gain = this._ctx.createGain();
+            gain.gain.value = vol;
 
-          const gain = this._ctx.createGain();
-          gain.gain.value = vol;
+            src.connect(gain);
+            gain.connect(this._ctx.destination);
 
-          src.connect(gain);
-          gain.connect(this._ctx.destination);
+            src.start(0);
+          } catch (e) {
+            console.warn("[sfx] play error", key, e);
+          }
+        })
+        .catch((e) => {
+          console.warn("[sfx] play chain failed", key, e);
+        });
+    },
 
-          src.start(0);
-        } catch (e) {
-          console.warn("[sfx] play error", key, e);
-        }
-      });
+    _ensureContext() {
+      if (this._ctx) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) {
+        console.warn("[sfx] AudioContext not supported");
+        return;
+      }
+      this._ctx = new AC();
+      this._resumePromise = null;
+    },
+
+    _resume() {
+      if (!this._ctx) return Promise.resolve();
+      if (this._ctx.state === "running") return Promise.resolve();
+
+      if (this._resumePromise) return this._resumePromise;
+
+      // resumeは1回だけ走らせ、共有する
+      const p = this._ctx.resume();
+      this._resumePromise =
+        (p && typeof p.then === "function")
+          ? p.catch((e) => {
+              // 失敗したら次回再挑戦できるようにクリア
+              this._resumePromise = null;
+              throw e;
+            })
+          : Promise.resolve();
+
+      return this._resumePromise;
     },
 
     _resolveUrl(key) {
@@ -133,12 +149,6 @@ export async function createSfx({
       if (!url) {
         console.warn("[sfx] missing key in manifest:", key);
         return null;
-      }
-      if (!this._ctx) {
-        // unlock前にprimeされた場合でも、ctxが無いとdecodeできないので作る
-        const AC = window.AudioContext || window.webkitAudioContext;
-        if (!AC) return null;
-        this._ctx = new AC();
       }
 
       const task = (async () => {
