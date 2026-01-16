@@ -4,7 +4,7 @@
   "reelStop1": "reelStop.mp3",
   "reelStop2": "reelStop.mp3",
 
-  "stamp": "./assets/sfx/stamp.mp3",
+  "stamp": "stamp.mp3",
   "dupe": "./assets/sfx/dupe.mp3",
 
   "bonus_confirm": "./assets/sfx/bonus_confirm.mp3",
