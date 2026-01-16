@@ -247,3 +247,46 @@ function clampInt(v, min, max) {
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+
+// ★追加：内部確定（結果が決まった瞬間）で鳴らす用
+// result が確定した時点で「この回で出るボーナスキー」を返す（stateは変更しない）
+export function previewBonusKeys({ state, ndc, result }) {
+  const { x, y, z } = result;
+
+  const keys = [];
+
+  // 出目系（stateに依存しない）
+  if (y === 0 && z === 0) keys.push("bonus_n00");
+  if (x === y && y === z) keys.push("bonus_triple");
+  if (y === x + 1 && z === y + 1) keys.push("bonus_straight");
+  if (x === z && x !== y) keys.push("bonus_sandwich");
+
+  // 行/ページは「そのマスが押された後」を想定して判定
+  // 既に埋まっていた場合（ダブり）でも、コンプ条件は満たせないのでここでは無視するのが無難
+  const was = Boolean(state?.stamps?.[x]?.[y]?.[z]);
+  if (!was) {
+    if (wouldRowCompleteAfterStamp({ state, ndc, page: x, row: y, col: z })) keys.push("bonus_row");
+    if (wouldPageCompleteAfterStamp({ state, ndc, page: x, row: y, col: z })) keys.push("bonus_page");
+  }
+
+  return keys;
+}
+
+function wouldRowCompleteAfterStamp({ state, ndc, page, row, col }) {
+  for (let c = 0; c < 10; c++) {
+    const valid = ndc.isValidCell(page, row, c);
+    if (!valid) continue;
+    const filled = (c === col) ? true : Boolean(state.stamps[page][row][c]);
+    if (!filled) return false;
+  }
+  return true;
+}
+
+function wouldPageCompleteAfterStamp({ state, ndc, page, row, col }) {
+  // ページ内の valid マスが全部埋まるか
+  for (const t of ndc.validByPage[page]) {
+    const filled = (t.y === row && t.z === col) ? true : Boolean(state.stamps[t.x][t.y][t.z]);
+    if (!filled) return false;
+  }
+  return true;
+}
