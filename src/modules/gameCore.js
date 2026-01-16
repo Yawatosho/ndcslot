@@ -7,27 +7,15 @@ import { pickPreferClose } from "./ndc.js";
  * @typedef {{x:number,y:number,z:number,code:string}} Triple
  */
 
-/**
- * しおり券を「コイン」として消費してスピンする。
- * @param {{state:any, ticketsPerSpin:number}} params
- */
 export function canSpin({ state, ticketsPerSpin = 1 }) {
   return Number(state?.bookmarkTickets ?? 0) >= ticketsPerSpin;
 }
 
-/**
- * @param {{state:any, ticketsPerSpin:number}} params
- */
 export function consumeSpin({ state, ticketsPerSpin = 1 }) {
   const cost = Math.max(0, Math.trunc(Number(ticketsPerSpin ?? 1)));
   state.bookmarkTickets = Math.max(0, Number(state.bookmarkTickets ?? 0) - cost);
 }
 
-/**
- * ダブり救済（ピティ）を引くか。
- * 未取得が残っていない場合は無効。
- * @param {{state:any, ndc:any, pityTable:number[]}} params
- */
 export function shouldTriggerPity({ state, ndc, pityTable }) {
   if (!ndc?.validAll?.length) return false;
   if (!hasAnyUncollected({ state, ndc })) return false;
@@ -39,11 +27,6 @@ export function shouldTriggerPity({ state, ndc, pityTable }) {
   return Math.random() < p;
 }
 
-/**
- * 通常抽選：有効コードからランダム
- * @param {any} ndc
- * @returns {Triple}
- */
 export function rollRandomValid(ndc) {
   const list = ndc?.validAll ?? [];
   if (!list.length) {
@@ -53,14 +36,6 @@ export function rollRandomValid(ndc) {
   return list[randInt(0, list.length - 1)];
 }
 
-/**
- * 新規確定抽選：できるだけ「自然」に見える優先順位で未取得を選ぶ。
- * 1) 同ページ（Xが同じ）
- * 2) 同10の位（Yが同じ）
- * 3) 全体
- * @param {{state:any, ndc:any}} params
- * @returns {Triple}
- */
 export function rollNewGuaranteed({ state, ndc }) {
   const base = getBaseTriple(state);
 
@@ -76,35 +51,40 @@ export function rollNewGuaranteed({ state, ndc }) {
   const c3 = (ndc?.validAll ?? []).filter((t) => !state?.stamps?.[t.x]?.[t.y]?.[t.z]);
   if (c3.length) return pickPreferClose(c3, base);
 
-  // 完全コンプ時は通常抽選へフォールバック
   return rollRandomValid(ndc);
 }
 
 /**
  * スタンプ反映 + 報酬 + ボーナス
  * @param {{state:any, ndc:any, result:Triple, rewards?:{
- *   new:number, dupe:number, pageComplete:number,
- *   triple:number, straight:number, sandwich:number, pair:number, lucky7:number
+ *   new:number, dupe:number,
+ *   rowComplete:number, pageComplete:number,
+ *   triple:number, straight:number, sandwich:number,
+ *   n00:number, lucky7:number
  * }}} params
- * @returns {{isNew:boolean, pageCompletedNow:boolean, ticketDelta:number, breakdown:{label:string, amount:number}[]}}
  */
 export function applyStampAndRewards({ state, ndc, result, rewards }) {
   const cfg = {
-    new: 8,
-    dupe: 1,
-    pageComplete: 50,
-    triple: 1000,
-    straight: 300,
-    sandwich: 120,
-    pair: 60,
-    lucky7: 70,
+    // 基本（ユーザー指定）
+    new: 0,
+    dupe: 0,
+
+    // コンプ
+    rowComplete: 30,
+    pageComplete: 100,
+
+    // 出目ボーナス
+    triple: 100,      // ゾロ目
+    straight: 30,     // 連番（昇順のみ）
+    sandwich: 5,      // サンドイッチ（ABA）
+    n00: 20,          // ★n00（x00）ボーナス：100,200,...,900,000
+    lucky7: 0,        // なし（互換のため残しているだけ）
+
     ...(rewards ?? {}),
   };
 
   const { x, y, z } = result;
   const valid = Boolean(ndc?.isValidCell?.(x, y, z));
-
-  // 対象外は出さない設計だが、念のため：対象外なら報酬なし
   if (!valid) {
     return { isNew: false, pageCompletedNow: false, ticketDelta: 0, breakdown: [] };
   }
@@ -116,40 +96,50 @@ export function applyStampAndRewards({ state, ndc, result, rewards }) {
   const breakdown = [];
   let delta = 0;
 
-  // 基本報酬
+  // 基本報酬（0は表示しない）
   if (isNew) {
-    delta += cfg.new;
-    breakdown.push({ label: `新規 +${cfg.new}`, amount: cfg.new });
+    if (cfg.new > 0) {
+      delta += cfg.new;
+      breakdown.push({ label: `新規 +${cfg.new}`, amount: cfg.new });
+    }
   } else {
-    delta += cfg.dupe;
-    breakdown.push({ label: `ダブり +${cfg.dupe}`, amount: cfg.dupe });
+    if (cfg.dupe > 0) {
+      delta += cfg.dupe;
+      breakdown.push({ label: `ダブり +${cfg.dupe}`, amount: cfg.dupe });
+    }
   }
 
-  // ページコンプ（1回だけ）
-  const pageCompletedNow = checkAndApplyPageComplete({ state, ndc, page: x, bonus: cfg.pageComplete, breakdown });
+  // 1行コンプ（その行が埋まったら、1回だけ）
+  const rowCompletedNow = checkAndApplyRowComplete({
+    state, ndc, page: x, row: y, bonus: cfg.rowComplete, breakdown
+  });
+  if (rowCompletedNow) delta += cfg.rowComplete;
+
+  // 1ページコンプ（1回だけ）
+  const pageCompletedNow = checkAndApplyPageComplete({
+    state, ndc, page: x, bonus: cfg.pageComplete, breakdown
+  });
   if (pageCompletedNow) delta += cfg.pageComplete;
 
   // スペシャルボーナス
   const special = computeSpecialBonuses({ x, y, z }, cfg);
   for (const b of special) {
-    delta += b.amount;
-    breakdown.push({ label: b.label, amount: b.amount });
+    if (b.amount > 0) {
+      delta += b.amount;
+      breakdown.push({ label: b.label, amount: b.amount });
+    }
   }
 
-  state.bookmarkTickets = Math.max(0, Number(state.bookmarkTickets ?? 0) + delta);
+  if (delta !== 0) {
+    state.bookmarkTickets = Math.max(0, Number(state.bookmarkTickets ?? 0) + delta);
+  }
 
   return { isNew, pageCompletedNow, ticketDelta: delta, breakdown };
 }
 
-/**
- * @param {{state:any, isNew:boolean}} params
- */
 export function updateDupeStreak({ state, isNew }) {
-  if (isNew) {
-    state.dupeStreak = 0;
-  } else {
-    state.dupeStreak = clampInt(Number(state.dupeStreak ?? 0) + 1, 0, 7);
-  }
+  if (isNew) state.dupeStreak = 0;
+  else state.dupeStreak = clampInt(Number(state.dupeStreak ?? 0) + 1, 0, 7);
 }
 
 // ----------------
@@ -172,7 +162,31 @@ function getBaseTriple(state) {
   return { x, y: randInt(0, 9), z: randInt(0, 9) };
 }
 
+function checkAndApplyRowComplete({ state, ndc, page, row, bonus, breakdown }) {
+  if (!Number.isFinite(bonus) || bonus <= 0) return false;
+
+  if (!state.rowRewarded) {
+    state.rowRewarded = Array.from({ length: 10 }, () => Array.from({ length: 10 }, () => false));
+  }
+  if (!state.rowRewarded[page]) {
+    state.rowRewarded[page] = Array.from({ length: 10 }, () => false);
+  }
+  if (state.rowRewarded[page][row]) return false;
+
+  // 10列ぶん確認：対象外は最初から埋まり扱い
+  for (let col = 0; col < 10; col++) {
+    const valid = ndc.isValidCell(page, row, col);
+    if (!valid) continue;
+    if (!state.stamps[page][row][col]) return false;
+  }
+
+  state.rowRewarded[page][row] = true;
+  breakdown.push({ label: `1行コンプ +${bonus}`, amount: bonus });
+  return true;
+}
+
 function checkAndApplyPageComplete({ state, ndc, page, bonus, breakdown }) {
+  if (!Number.isFinite(bonus) || bonus <= 0) return false;
   if (state.pageRewarded?.[page]) return false;
 
   const validCount = ndc.validByPage?.[page]?.length ?? 0;
@@ -184,7 +198,7 @@ function checkAndApplyPageComplete({ state, ndc, page, bonus, breakdown }) {
   const pageDisplayFilled = invalidCount + filledValid;
   if (pageDisplayFilled >= 100) {
     state.pageRewarded[page] = true;
-    breakdown.push({ label: `ページコンプ +${bonus}`, amount: bonus });
+    breakdown.push({ label: `1ページコンプ +${bonus}`, amount: bonus });
     return true;
   }
   return false;
@@ -193,40 +207,34 @@ function checkAndApplyPageComplete({ state, ndc, page, bonus, breakdown }) {
 function computeSpecialBonuses({ x, y, z }, cfg) {
   const out = [];
 
+  // ★n00（x00）ボーナス：y=0,z=0
+  // 000 も該当します（ゾロ目と重複で当たる設計）
+  if (y === 0 && z === 0) {
+    out.push({ label: `x00 +${cfg.n00}`, amount: cfg.n00 });
+  }
+
   // ゾロ目
   if (x === y && y === z) {
     out.push({ label: `ゾロ目 +${cfg.triple}`, amount: cfg.triple });
   }
 
-  // 連番（昇順/降順） 例: 123, 234, 321, 210
-  if (isStraight3(x, y, z)) {
+  // 3桁連番（昇順のみ） 例: 123, 234
+  if (isStraightAsc3(x, y, z)) {
     out.push({ label: `連番 +${cfg.straight}`, amount: cfg.straight });
   }
 
-  // サンドイッチ（ABA） 例: 121, 707
+  // サンドイッチ（ABA） 例: 121
   if (x === z && x !== y) {
     out.push({ label: `サンドイッチ +${cfg.sandwich}`, amount: cfg.sandwich });
   }
 
-  // ペア（AAB/ABB）
-  if ((x === y && y !== z) || (y === z && x !== y)) {
-    out.push({ label: `ペア +${cfg.pair}`, amount: cfg.pair });
-  }
-
-  // ラッキー7（どれかに7が入っていたら）
-  if (x === 7 || y === 7 || z === 7) {
-    out.push({ label: `ラッキー7 +${cfg.lucky7}`, amount: cfg.lucky7 });
-  }
+  // ペア：廃止
 
   return out;
 }
 
-function isStraight3(a, b, c) {
-  // 昇順
-  if (b === a + 1 && c === b + 1) return true;
-  // 降順
-  if (b === a - 1 && c === b - 1) return true;
-  return false;
+function isStraightAsc3(a, b, c) {
+  return (b === a + 1 && c === b + 1);
 }
 
 function clampInt(v, min, max) {
