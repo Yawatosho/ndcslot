@@ -1,14 +1,8 @@
-/* src/main.js
-   次の分割：
-   - ndc.js（読み込み・有効コード生成）✅
-   - state.js（保存・日替わり）✅
-   - view.js（描画）✅
-   - gameCore.js（中核ロジック）✅
-*/
+import { initNdc } from "./modules/ndc.js?v=20260116c";
+import { loadState, saveState, createInitialState } from "./modules/state.js?v=20260116c";
+import { createView } from "./modules/view.js?v=20260116c";
+import { createSfx } from "./modules/sfx.js?v=20260116c";
 
-import { initNdc } from "./modules/ndc.js?v=20260116b";
-import { loadState, saveState, createInitialState } from "./modules/state.js?v=20260116b";
-import { createView } from "./modules/view.js?v=20260116a";
 import {
   canSpin,
   consumeSpin,
@@ -17,40 +11,26 @@ import {
   rollNewGuaranteed,
   applyStampAndRewards,
   updateDupeStreak,
-} from "./modules/gameCore.js?v=20260116b";
+  previewBonusKeys, // ★追加（内部確定）
+} from "./modules/gameCore.js?v=20260116c";
 
-// 保存キーは破壊的変更（state構造追加）につき v2
 const SAVE_KEY = "ndc_slot_save_v2";
 
-// 初期枚数
 const START_TICKETS = 30;
 const TICKETS_PER_SPIN = 1;
 
-// 報酬（しおり券）
-const REWARD_NEW = 0;
-const REWARD_DUPE = 0;
-
-// コンプ報酬
-const REWARD_ROW_COMPLETE = 30;   // 1行コンプ
-const REWARD_PAGE_COMPLETE = 100; // 1ページコンプ
-
-// ボーナス（しおり券）
-const BONUS_TRIPLE = 100;   // ゾロ目
-const BONUS_STRAIGHT = 30;  // 3桁連番（昇順のみ）
-const BONUS_SANDWICH = 5;   // サンドイッチ（ABA）
-const BONUS_N00 = 20;       // ★x00（n00）ボーナス
-const BONUS_LUCKY7 = 0;     // なし
-
-
-// 後半加速ピティ（index = dupeStreak）
+// 後半加速ピティ
 const PITY_TABLE = [0.00, 0.10, 0.20, 0.35, 0.55, 0.75, 0.90, 1.00];
 
-// ndc.json は「公開フォルダ直下」に置く（src/ の1つ上）
 const NDC_JSON_URL = new URL("../ndc.json", import.meta.url);
+const SFX_JSON_URL = new URL("../sfx.json", import.meta.url);
 
 let ndc = null;
 let state = null;
+
 const view = createView();
+let sfx = null;
+
 let isSpinning = false;
 
 boot().catch((e) => {
@@ -66,10 +46,16 @@ async function boot() {
 
   ndc = await initNdc({ jsonUrl: NDC_JSON_URL });
 
+  // ★SFX
+  sfx = await createSfx({ manifestUrl: SFX_JSON_URL, defaultEnabled: true, defaultVolume: 0.75 });
+  view.setSfx(sfx);
+
+  // ユーザー操作でunlock（autoplay対策）
+  window.addEventListener("pointerdown", () => sfx.unlock(), { once: true });
+
   state = loadState({ saveKey: SAVE_KEY, startTickets: START_TICKETS });
   saveState({ saveKey: SAVE_KEY }, state);
 
-  // tabs
   view.initTabs({
     onSelectPage: (p) => {
       state.currentPage = p;
@@ -78,11 +64,9 @@ async function boot() {
     },
   });
 
-  // initial slot display
   view.setSlotDigits(0, 0, 0);
   view.setResultText({ ndc, code: "000" });
 
-  // events
   view.el.spinBtn.addEventListener("click", () => onSpin());
   view.el.resetBtn.addEventListener("click", () => {
     if (!confirm("保存データを初期化します。よろしいですか？")) return;
@@ -91,6 +75,7 @@ async function boot() {
     rerender();
     view.toast("初期化しました");
   });
+
   view.el.openSpecLink.addEventListener("click", (ev) => {
     ev.preventDefault();
     view.toast("SPEC.md / RULES.md / BACKLOG.md をプロジェクトに固定して進めましょう");
@@ -110,6 +95,9 @@ async function onSpin() {
     return;
   }
 
+  // ★開始ボタン時
+  sfx?.play?.("spinStart");
+
   consumeSpin({ state, ticketsPerSpin: TICKETS_PER_SPIN });
 
   const pity = shouldTriggerPity({ state, ndc, pityTable: PITY_TABLE });
@@ -117,40 +105,39 @@ async function onSpin() {
     ? rollNewGuaranteed({ state, ndc })
     : rollRandomValid(ndc);
 
-  // ここから演出（ボタン無効化）
+  // ★内部抽選で各ボーナスが確定した時（確定音を鳴らす）
+  const bonusKeys = previewBonusKeys({ state, ndc, result });
+  if (bonusKeys.length) {
+    sfx?.play?.("bonus_confirm", { volumeMul: 0.8 });
+  }
+
   isSpinning = true;
-  rerender(); // forceDisabledが効く
+  rerender();
 
   await view.playSpinAnimation({
     ndc,
     finalResult: result,
     durationMs: 420,
     tickMs: 55,
+    stopGapMs: 500,
+    postResultPauseMs: 650,
   });
 
-  // 最終結果の分類名を表示
   view.setResultText({ ndc, code: result.code });
 
-  // 状態反映（止まってからコミット）
   state.currentPage = result.x;
   state.lastResultCode = result.code;
 
-const outcome = applyStampAndRewards({
-  state,
-  ndc,
-  result,
-  rewards: {
-    new: REWARD_NEW,
-    dupe: REWARD_DUPE,
-    rowComplete: REWARD_ROW_COMPLETE,
-    pageComplete: REWARD_PAGE_COMPLETE,
-    triple: BONUS_TRIPLE,
-    straight: BONUS_STRAIGHT,
-    sandwich: BONUS_SANDWICH,
-    n00: BONUS_N00,
-    lucky7: BONUS_LUCKY7,
-  },
-});
+  const outcome = applyStampAndRewards({
+    state,
+    ndc,
+    result,
+    // ※あなたの報酬設定をここに（省略可：gameCore側デフォルトでもOK）
+  });
+
+  // ★ダブり時
+  if (!outcome.isNew) sfx?.play?.("dupe");
+
   updateDupeStreak({ state, isNew: outcome.isNew });
 
   state.stats.totalSpins += 1;
@@ -166,9 +153,17 @@ const outcome = applyStampAndRewards({
   const subj = ndc.getSubject(result.code) ?? "";
   view.toast(`${pity ? "救済" : "結果"}: ${result.code}${subj ? ` / ${subj}` : ""}`);
 
-  // 獲得内訳（0は表示しない）
-  for (const b of outcome.breakdown) {
-    view.toast(b.label);
+  // ★各ボーナスが出た時（見せるタイミングで鳴らす）
+  // outcome.breakdown に label がある前提。ここでは label からキー推定せず、
+  // “内部確定で拾った bonusKeys” を鳴らすのが一番管理しやすいです。
+  // （ボーナスの種類が増えてもここを触らなくて済む）
+  if (bonusKeys.length) {
+    // 少し間を置いて“出た感”
+    let d = 0;
+    for (const k of bonusKeys) {
+      setTimeout(() => sfx?.play?.(k), 120 + d);
+      d += 120;
+    }
   }
 }
 
