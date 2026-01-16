@@ -2,7 +2,7 @@
 // 効果音の一元管理（差し替えは sfx.json 側）
 // - 相対URLは sfx.json の場所を基準に解決（res.url）
 // - autoplay制限対策：unlock() を「ユーザー操作の同期区間」で呼ぶ
-// - 失敗してもゲームを止めない（安全に握りつぶす）
+// - play失敗は console に出す（原因特定用）
 
 const LS_ENABLED_KEY = "ndc_slot_sfx_enabled_v1";
 const LS_VOLUME_KEY = "ndc_slot_sfx_volume_v1";
@@ -20,7 +20,7 @@ export async function createSfx({
     volume,
     manifest: {},
     _manifestUrl: manifestUrl ? String(manifestUrl) : "",
-    _audioPool: new Map(), // key -> Audio[]
+    _audioPool: new Map(),
     _unlocked: false,
 
     async load() {
@@ -31,33 +31,48 @@ export async function createSfx({
         this._manifestUrl = res.url || this._manifestUrl;
         const json = await res.json();
         if (json && typeof json === "object") this.manifest = json;
-      } catch {
-        // no-op
+      } catch (e) {
+        console.warn("[sfx] manifest load failed", e);
       }
     },
 
-    // ★重要：ユーザー操作の「同期区間」で呼ぶこと
-    // await を使わず、play を投げっぱなしにする（ここが一番安定）
+    // ★unlockは「成功したら」unlockedにする（拒否されたのにtrueにしない）
     unlock() {
       if (this._unlocked) return;
-      this._unlocked = true;
+
+      const url = this._resolve("spinStart");
+      if (!url) {
+        console.warn("[sfx] unlock skipped: spinStart not found in manifest");
+        return;
+      }
 
       try {
-        const url = this._resolve("spinStart");
-        if (!url) return;
-
         const a = new Audio(url);
         a.preload = "auto";
+        a.muted = true;     // ★ミュートで解錠（iOS系で安定）
         a.volume = 0;
 
         const p = a.play();
-        // promise は待たない（待つと gesture 文脈を失うブラウザがある）
-        if (p && typeof p.catch === "function") p.catch(() => {});
-        // すぐ止める（無音の解錠）
-        a.pause();
-        a.currentTime = 0;
-      } catch {
-        // no-op
+        if (p && typeof p.then === "function") {
+          p.then(() => {
+            // 再生できた＝解錠成功
+            this._unlocked = true;
+            a.pause();
+            a.currentTime = 0;
+          }).catch((err) => {
+            console.warn("[sfx] unlock play blocked", err);
+            // blockedならunlockedのままにしない（次のジェスチャで再挑戦できる）
+            this._unlocked = false;
+          });
+        } else {
+          // 古い環境向け：ここまで来たら成功扱い
+          this._unlocked = true;
+          a.pause();
+          a.currentTime = 0;
+        }
+      } catch (e) {
+        console.warn("[sfx] unlock error", e);
+        this._unlocked = false;
       }
     },
 
@@ -73,21 +88,28 @@ export async function createSfx({
 
     play(key, opts = {}) {
       if (!this.enabled) return;
+
       const url = this._resolve(key);
-      if (!url) return;
+      if (!url) {
+        console.warn("[sfx] missing key:", key);
+        return;
+      }
 
       const volMul = clamp01(Number(opts.volumeMul ?? 1));
       const vol = clamp01(this.volume * volMul);
 
       try {
         const a = this._acquire(key, url);
+        a.muted = false;
         a.currentTime = 0;
         a.volume = vol;
 
         const p = a.play();
-        if (p && typeof p.catch === "function") p.catch(() => {});
-      } catch {
-        // no-op
+        if (p && typeof p.catch === "function") {
+          p.catch((err) => console.warn("[sfx] play blocked:", key, err));
+        }
+      } catch (e) {
+        console.warn("[sfx] play error:", key, e);
       }
     },
 
