@@ -1,7 +1,7 @@
-import { initNdc } from "./modules/ndc.js?v=20260116d";
-import { loadState, saveState, createInitialState } from "./modules/state.js?v=20260116d";
-import { createView } from "./modules/view.js?v=20260116d";
-import { createSfx } from "./modules/sfx.js?v=20260116d";
+import { initNdc } from "./modules/ndc.js?v=20260116e";
+import { loadState, saveState, createInitialState } from "./modules/state.js?v=20260116e";
+import { createView } from "./modules/view.js?v=20260116e";
+import { createSfx } from "./modules/sfx.js?v=20260116e";
 
 import {
   canSpin,
@@ -11,15 +11,14 @@ import {
   rollNewGuaranteed,
   applyStampAndRewards,
   updateDupeStreak,
-  previewBonusKeys, // ★追加（内部確定）
-} from "./modules/gameCore.js?v=20260116d";
+  previewBonusKeys,
+} from "./modules/gameCore.js?v=20260116e";
 
 const SAVE_KEY = "ndc_slot_save_v2";
 
 const START_TICKETS = 30;
 const TICKETS_PER_SPIN = 1;
 
-// 後半加速ピティ
 const PITY_TABLE = [0.00, 0.10, 0.20, 0.35, 0.55, 0.75, 0.90, 1.00];
 
 const NDC_JSON_URL = new URL("../ndc.json", import.meta.url);
@@ -46,12 +45,12 @@ async function boot() {
 
   ndc = await initNdc({ jsonUrl: NDC_JSON_URL });
 
-  // ★SFX
+  // SFX
   sfx = await createSfx({ manifestUrl: SFX_JSON_URL, defaultEnabled: true, defaultVolume: 0.75 });
   view.setSfx(sfx);
 
-  // ユーザー操作でunlock（autoplay対策）
-  const unlockOnce = () => sfx.unlock();
+  // ★ここが肝：ユーザー操作の同期区間で unlock（await しない）
+  const unlockOnce = () => sfx?.unlock?.();
   window.addEventListener("pointerdown", unlockOnce, { once: true });
   window.addEventListener("touchstart", unlockOnce, { once: true });
   window.addEventListener("mousedown", unlockOnce, { once: true });
@@ -99,22 +98,18 @@ async function onSpin() {
     return;
   }
 
-  // ★開始ボタン時
-  await sfx?.unlock?.();
+  // ★開始：unlockは同期（念のため毎回呼んでも軽い）
+  sfx?.unlock?.();
   sfx?.play?.("spinStart");
 
   consumeSpin({ state, ticketsPerSpin: TICKETS_PER_SPIN });
 
   const pity = shouldTriggerPity({ state, ndc, pityTable: PITY_TABLE });
-  const result = pity
-    ? rollNewGuaranteed({ state, ndc })
-    : rollRandomValid(ndc);
+  const result = pity ? rollNewGuaranteed({ state, ndc }) : rollRandomValid(ndc);
 
-  // ★内部抽選で各ボーナスが確定した時（確定音を鳴らす）
+  // ★内部確定
   const bonusKeys = previewBonusKeys({ state, ndc, result });
-  if (bonusKeys.length) {
-    sfx?.play?.("bonus_confirm", { volumeMul: 0.8 });
-  }
+  if (bonusKeys.length) sfx?.play?.("bonus_confirm", { volumeMul: 0.8 });
 
   isSpinning = true;
   rerender();
@@ -133,12 +128,7 @@ async function onSpin() {
   state.currentPage = result.x;
   state.lastResultCode = result.code;
 
-  const outcome = applyStampAndRewards({
-    state,
-    ndc,
-    result,
-    // ※あなたの報酬設定をここに（省略可：gameCore側デフォルトでもOK）
-  });
+  const outcome = applyStampAndRewards({ state, ndc, result });
 
   state.lastOutcome = {
     isNew: outcome.isNew,
@@ -146,7 +136,6 @@ async function onSpin() {
     breakdown: outcome.breakdown,
   };
 
-  // ★ダブり時
   if (!outcome.isNew) sfx?.play?.("dupe");
 
   updateDupeStreak({ state, isNew: outcome.isNew });
@@ -164,12 +153,7 @@ async function onSpin() {
   const subj = ndc.getSubject(result.code) ?? "";
   view.toast(`${pity ? "救済" : "結果"}: ${result.code}${subj ? ` / ${subj}` : ""}`);
 
-  // ★各ボーナスが出た時（見せるタイミングで鳴らす）
-  // outcome.breakdown に label がある前提。ここでは label からキー推定せず、
-  // “内部確定で拾った bonusKeys” を鳴らすのが一番管理しやすいです。
-  // （ボーナスの種類が増えてもここを触らなくて済む）
   if (bonusKeys.length) {
-    // 少し間を置いて“出た感”
     let d = 0;
     for (const k of bonusKeys) {
       setTimeout(() => sfx?.play?.(k), 120 + d);
