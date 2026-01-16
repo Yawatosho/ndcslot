@@ -37,9 +37,10 @@ const REWARD_PAGE_COMPLETE = 100; // 1ページコンプ
 // ボーナス（しおり券）
 const BONUS_TRIPLE = 100;   // ゾロ目
 const BONUS_STRAIGHT = 30;  // 3桁連番（昇順のみ）
-const BONUS_PAIR = 3;       // ペア（AAB/ABB）
 const BONUS_SANDWICH = 5;   // サンドイッチ（ABA）
+const BONUS_N00 = 20;       // ★x00（n00）ボーナス
 const BONUS_LUCKY7 = 0;     // なし
+
 
 // 後半加速ピティ（index = dupeStreak）
 const PITY_TABLE = [0.00, 0.10, 0.20, 0.35, 0.55, 0.75, 0.90, 1.00];
@@ -134,22 +135,22 @@ async function onSpin() {
   state.currentPage = result.x;
   state.lastResultCode = result.code;
 
-  const outcome = applyStampAndRewards({
-    state,
-    ndc,
-    result,
-    rewards: {
-      new: REWARD_NEW,
-      dupe: REWARD_DUPE,
-      rowComplete: REWARD_ROW_COMPLETE,
-      pageComplete: REWARD_PAGE_COMPLETE,
-      triple: BONUS_TRIPLE,
-      straight: BONUS_STRAIGHT,
-      sandwich: BONUS_SANDWICH,
-      pair: BONUS_PAIR,
-      lucky7: BONUS_LUCKY7,
-    },
-  });
+const outcome = applyStampAndRewards({
+  state,
+  ndc,
+  result,
+  rewards: {
+    new: REWARD_NEW,
+    dupe: REWARD_DUPE,
+    rowComplete: REWARD_ROW_COMPLETE,
+    pageComplete: REWARD_PAGE_COMPLETE,
+    triple: BONUS_TRIPLE,
+    straight: BONUS_STRAIGHT,
+    sandwich: BONUS_SANDWICH,
+    n00: BONUS_N00,
+    lucky7: BONUS_LUCKY7,
+  },
+});
   updateDupeStreak({ state, isNew: outcome.isNew });
 
   state.stats.totalSpins += 1;
