@@ -21,12 +21,20 @@ const TICKETS_PER_SPIN = 1;
 const PITY_TABLE = [0.00, 0.10, 0.20, 0.35, 0.55, 0.75, 0.90, 1.00];
 
 const NDC_JSON_URL = new URL("../ndc.json", import.meta.url);
+const SPIN_START_SOUND_URL = new URL("../spinStart.mp3", import.meta.url);
+const STAMP_SOUND_URL = new URL("../stamp.mp3", import.meta.url);
 let ndc = null;
 let state = null;
 
 const view = createView();
 
 let isSpinning = false;
+const spinStartAudio = new Audio(SPIN_START_SOUND_URL);
+spinStartAudio.preload = "auto";
+spinStartAudio.volume = 0.9;
+const stampAudio = new Audio(STAMP_SOUND_URL);
+stampAudio.preload = "auto";
+stampAudio.volume = 0.9;
 
 boot().catch((e) => {
   console.error(e);
@@ -85,6 +93,8 @@ async function onSpin() {
     return;
   }
 
+  playSpinStartSound();
+
   // ★開始：unlockは同期（念のため毎回呼んでも軽い）
   consumeSpin({ state, ticketsPerSpin: TICKETS_PER_SPIN });
 
@@ -111,6 +121,9 @@ async function onSpin() {
   state.lastResultCode = result.code;
 
   const outcome = applyStampAndRewards({ state, ndc, result });
+  if (outcome.isNew) {
+    playStampSound();
+  }
 
   state.lastOutcome = {
     isNew: outcome.isNew,
@@ -134,6 +147,26 @@ async function onSpin() {
   const subj = ndc.getSubject(result.code) ?? "";
   view.toast(`${pity ? "救済" : "結果"}: ${result.code}${subj ? ` / ${subj}` : ""}`);
 
+}
+
+function playSpinStartSound() {
+  try {
+    spinStartAudio.currentTime = 0;
+    const playPromise = spinStartAudio.play();
+    if (playPromise?.catch) {
+      playPromise.catch(() => {});
+    }
+  } catch {}
+}
+
+function playStampSound() {
+  try {
+    stampAudio.currentTime = 0;
+    const playPromise = stampAudio.play();
+    if (playPromise?.catch) {
+      playPromise.catch(() => {});
+    }
+  } catch {}
 }
 
 function rerender(opts = {}) {
