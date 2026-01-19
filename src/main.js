@@ -23,6 +23,8 @@ const PITY_TABLE = [0.00, 0.10, 0.20, 0.35, 0.55, 0.75, 0.90, 1.00];
 const NDC_JSON_URL = new URL("../ndc.json", import.meta.url);
 const SPIN_START_SOUND_URL = new URL("../spinStart.mp3", import.meta.url);
 const STAMP_SOUND_URL = new URL("../stamp.mp3", import.meta.url);
+const MISS_SOUND_URL = new URL("../miss.mp3", import.meta.url);
+const SAND_SOUND_URL = new URL("../sand.mp3", import.meta.url);
 let ndc = null;
 let state = null;
 
@@ -35,6 +37,12 @@ spinStartAudio.volume = 0.9;
 const stampAudio = new Audio(STAMP_SOUND_URL);
 stampAudio.preload = "auto";
 stampAudio.volume = 0.9;
+const missAudio = new Audio(MISS_SOUND_URL);
+missAudio.preload = "auto";
+missAudio.volume = 0.9;
+const sandAudio = new Audio(SAND_SOUND_URL);
+sandAudio.preload = "auto";
+sandAudio.volume = 0.9;
 
 boot().catch((e) => {
   console.error(e);
@@ -121,8 +129,13 @@ async function onSpin() {
   state.lastResultCode = result.code;
 
   const outcome = applyStampAndRewards({ state, ndc, result });
-  if (outcome.isNew) {
+  const hasSandwichBonus = outcome.breakdown?.some((item) => item.label?.includes("サンドイッチ"));
+  if (hasSandwichBonus) {
+    playSandSound();
+  } else if (outcome.isNew) {
     playStampSound();
+  } else {
+    playMissSound();
   }
 
   state.lastOutcome = {
@@ -150,19 +163,25 @@ async function onSpin() {
 }
 
 function playSpinStartSound() {
-  try {
-    spinStartAudio.currentTime = 0;
-    const playPromise = spinStartAudio.play();
-    if (playPromise?.catch) {
-      playPromise.catch(() => {});
-    }
-  } catch {}
+  playSound(spinStartAudio);
 }
 
 function playStampSound() {
+  playSound(stampAudio);
+}
+
+function playMissSound() {
+  playSound(missAudio);
+}
+
+function playSandSound() {
+  playSound(sandAudio);
+}
+
+function playSound(audio) {
   try {
-    stampAudio.currentTime = 0;
-    const playPromise = stampAudio.play();
+    audio.currentTime = 0;
+    const playPromise = audio.play();
     if (playPromise?.catch) {
       playPromise.catch(() => {});
     }
