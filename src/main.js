@@ -42,6 +42,7 @@ async function boot() {
   ndc = await initNdc({ jsonUrl: NDC_JSON_URL });
 
   state = loadState({ saveKey: SAVE_KEY, startTickets: START_TICKETS });
+  syncHistory();
   saveState({ saveKey: SAVE_KEY }, state);
 
   view.initTabs({
@@ -59,6 +60,7 @@ async function boot() {
   view.el.resetBtn.addEventListener("click", () => {
     if (!confirm("保存データを初期化します。よろしいですか？")) return;
     state = createInitialState({ startTickets: START_TICKETS });
+    syncHistory({ force: true });
     saveState({ saveKey: SAVE_KEY }, state);
     rerender();
     view.toast("初期化しました");
@@ -122,6 +124,7 @@ async function onSpin() {
   if (outcome.isNew) state.stats.totalNew += 1;
   else state.stats.totalDupe += 1;
 
+  syncHistory();
   saveState({ saveKey: SAVE_KEY }, state);
 
   isSpinning = false;
@@ -139,4 +142,34 @@ function rerender(opts = {}) {
     forceDisabled: isSpinning,
   });
   view.render({ state, ndc, highlight: opts.highlight });
+}
+
+function syncHistory({ force = false } = {}) {
+  if (!state || !ndc) return;
+  if (!Array.isArray(state.history)) state.history = [];
+
+  const stamps = countCollectedStamps({ state, ndc });
+  const point = {
+    spins: Number(state.stats?.totalSpins ?? 0),
+    tickets: Number(state.bookmarkTickets ?? 0),
+    stamps,
+  };
+
+  const last = state.history[state.history.length - 1];
+  const sameSpins = last && Number(last.spins) === point.spins;
+  if (sameSpins && !force) {
+    state.history[state.history.length - 1] = point;
+    return;
+  }
+
+  state.history.push(point);
+}
+
+function countCollectedStamps({ state, ndc }) {
+  if (!state || !ndc) return 0;
+  let count = 0;
+  for (const t of ndc.validAll) {
+    if (state.stamps?.[t.x]?.[t.y]?.[t.z]) count += 1;
+  }
+  return count;
 }

@@ -12,6 +12,7 @@
  * @property {string=} lastResultCode
  * @property {{isNew:(boolean|null),ticketDelta:number,breakdown:{label:string,amount:number}[]}} lastOutcome
  * @property {{totalSpins:number,totalNew:number,totalDupe:number}} stats
+ * @property {{spins:number,tickets:number,stamps:number}[]} history
  */
 
 export function createInitialState({ startTickets = 30 } = {}) {
@@ -36,6 +37,7 @@ export function createInitialState({ startTickets = 30 } = {}) {
     lastResultCode: "000",
     lastOutcome: { isNew: null, ticketDelta: 0, breakdown: [] },
     stats: { totalSpins: 0, totalNew: 0, totalDupe: 0 },
+    history: [],
   };
 }
 
@@ -74,6 +76,10 @@ export function loadState({ saveKey, startTickets = 30 }) {
       merged.stats.totalSpins = Number(merged.stats.totalSpins ?? 0);
       merged.stats.totalNew = Number(merged.stats.totalNew ?? 0);
       merged.stats.totalDupe = Number(merged.stats.totalDupe ?? 0);
+    }
+
+    if (!Array.isArray(merged.history)) {
+      merged.history = [];
     }
 
     // 旧セーブへの軽い移行
