@@ -27,6 +27,7 @@ export function createView() {
 
     toast: document.getElementById("toast"),
     openSpecLink: document.getElementById("openSpecLink"),
+    trendChart: document.getElementById("trendChart"),
   };
 
   const PAGE_TRANSITION_MS = 220;
@@ -192,6 +193,7 @@ export function createView() {
     updateTabsActive(state.currentPage);
 
     renderLastOutcome(state.lastOutcome);
+    renderTrend({ state });
 
     const pageChanged = (lastRenderedPage !== null && lastRenderedPage !== state.currentPage);
 
@@ -249,6 +251,116 @@ export function createView() {
       li.textContent = item.label ?? String(item);
       el.lastOutcomeList.appendChild(li);
     }
+  }
+
+  function renderTrend({ state }) {
+    const canvas = el.trendChart;
+    if (!canvas) return;
+    const history = Array.isArray(state.history) ? state.history : [];
+    if (!history.length) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const displayWidth = canvas.clientWidth || canvas.width;
+    const displayHeight = canvas.clientHeight || canvas.height;
+    const width = Math.max(1, Math.floor(displayWidth * dpr));
+    const height = Math.max(1, Math.floor(displayHeight * dpr));
+
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+
+    ctx.clearRect(0, 0, width, height);
+
+    const padding = { left: 64, right: 64, top: 22, bottom: 34 };
+    const plotW = Math.max(10, width - padding.left - padding.right);
+    const plotH = Math.max(10, height - padding.top - padding.bottom);
+
+    const spins = history.map((p) => Number(p.spins ?? 0));
+    const tickets = history.map((p) => Number(p.tickets ?? 0));
+    const stamps = history.map((p) => Number(p.stamps ?? 0));
+
+    const maxSpins = Math.max(1, ...spins);
+    const maxTickets = Math.max(1, ...tickets);
+    const maxStamps = Math.max(1, ...stamps);
+
+    const ticketsMaxScaled = Math.ceil(maxTickets * 1.1);
+    const stampsMaxScaled = Math.ceil(maxStamps * 1.1);
+
+    const toX = (v) => padding.left + (v / maxSpins) * plotW;
+    const toYLeft = (v) => padding.top + plotH - (v / ticketsMaxScaled) * plotH;
+    const toYRight = (v) => padding.top + plotH - (v / stampsMaxScaled) * plotH;
+
+    const styles = getComputedStyle(document.documentElement);
+    const axisColor = styles.getPropertyValue("--line").trim() || "rgba(31,41,55,0.12)";
+    const textColor = styles.getPropertyValue("--muted").trim() || "#6b7280";
+    const ticketsColor = styles.getPropertyValue("--accent").trim() || "#4db7a6";
+    const stampsColor = styles.getPropertyValue("--warn").trim() || "#f29a7a";
+
+    ctx.strokeStyle = axisColor;
+    ctx.lineWidth = 1 * dpr;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, padding.top);
+    ctx.lineTo(padding.left, padding.top + plotH);
+    ctx.lineTo(padding.left + plotW, padding.top + plotH);
+    ctx.lineTo(padding.left + plotW, padding.top);
+    ctx.stroke();
+
+    ctx.font = `${11 * dpr}px system-ui, -apple-system, sans-serif`;
+    ctx.fillStyle = textColor;
+    ctx.textBaseline = "middle";
+
+    const tickCount = 3;
+    for (let i = 0; i < tickCount; i++) {
+      const t = i / (tickCount - 1);
+      const y = padding.top + plotH - plotH * t;
+      ctx.strokeStyle = axisColor;
+      ctx.beginPath();
+      ctx.moveTo(padding.left, y);
+      ctx.lineTo(padding.left + plotW, y);
+      ctx.stroke();
+
+      const leftLabel = Math.round(ticketsMaxScaled * t);
+      const rightLabel = Math.round(stampsMaxScaled * t);
+      ctx.textAlign = "right";
+      ctx.fillText(String(leftLabel), padding.left - 10 * dpr, y);
+      ctx.textAlign = "left";
+      ctx.fillText(String(rightLabel), padding.left + plotW + 10 * dpr, y);
+    }
+
+    ctx.textBaseline = "alphabetic";
+    ctx.textAlign = "right";
+    ctx.fillText("0", padding.left, padding.top + plotH + 18 * dpr);
+    ctx.textAlign = "left";
+    ctx.fillText(String(maxSpins), padding.left + plotW, padding.top + plotH + 18 * dpr);
+
+    drawLine({ ctx, history, color: ticketsColor, toY: toYLeft, toX, dpr, getValue: (p) => p.tickets });
+    drawLine({ ctx, history, color: stampsColor, toY: toYRight, toX, dpr, getValue: (p) => p.stamps });
+  }
+
+  function drawLine({ ctx, history, color, toX, toY, dpr, getValue }) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2 * dpr;
+    ctx.beginPath();
+    history.forEach((point, idx) => {
+      const x = toX(Number(point.spins ?? 0));
+      const y = toY(Number(getValue(point) ?? 0));
+      if (idx === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    const last = history[history.length - 1];
+    if (!last) return;
+    const lastX = toX(Number(last.spins ?? 0));
+    const lastY = toY(Number(getValue(last) ?? 0));
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(lastX, lastY, 3.5 * dpr, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   function animateGridIn(dir) {
