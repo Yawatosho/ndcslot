@@ -276,7 +276,7 @@ export function createView() {
     ctx.clearRect(0, 0, width, height);
 
     const padding = { left: 64, right: 64, top: 22, bottom: 34 };
-    const padding = { left: 48, right: 48, top: 18, bottom: 26 };
+
     const plotW = Math.max(10, width - padding.left - padding.right);
     const plotH = Math.max(10, height - padding.top - padding.bottom);
 
