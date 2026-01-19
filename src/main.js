@@ -22,6 +22,7 @@ const PITY_TABLE = [0.00, 0.10, 0.20, 0.35, 0.55, 0.75, 0.90, 1.00];
 
 const NDC_JSON_URL = new URL("../ndc.json", import.meta.url);
 const SPIN_START_SOUND_URL = new URL("../spinStart.mp3", import.meta.url);
+const STAMP_SOUND_URL = new URL("../stamp.mp3", import.meta.url);
 let ndc = null;
 let state = null;
 
@@ -31,6 +32,9 @@ let isSpinning = false;
 const spinStartAudio = new Audio(SPIN_START_SOUND_URL);
 spinStartAudio.preload = "auto";
 spinStartAudio.volume = 0.9;
+const stampAudio = new Audio(STAMP_SOUND_URL);
+stampAudio.preload = "auto";
+stampAudio.volume = 0.9;
 
 boot().catch((e) => {
   console.error(e);
@@ -117,6 +121,9 @@ async function onSpin() {
   state.lastResultCode = result.code;
 
   const outcome = applyStampAndRewards({ state, ndc, result });
+  if (outcome.isNew) {
+    playStampSound();
+  }
 
   state.lastOutcome = {
     isNew: outcome.isNew,
@@ -146,6 +153,16 @@ function playSpinStartSound() {
   try {
     spinStartAudio.currentTime = 0;
     const playPromise = spinStartAudio.play();
+    if (playPromise?.catch) {
+      playPromise.catch(() => {});
+    }
+  } catch {}
+}
+
+function playStampSound() {
+  try {
+    stampAudio.currentTime = 0;
+    const playPromise = stampAudio.play();
     if (playPromise?.catch) {
       playPromise.catch(() => {});
     }
